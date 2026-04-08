@@ -70,45 +70,20 @@ Before committing to a structure, apply the narrative principle from `../shared-
 - By the end of the Introduction, the outline should make the **What**, **Why**, and **So What** explicit.
 - Front-load the most important material: title, abstract, introduction, and hero figure. Reviewers often form a judgment before reading the full method.
 
-**IMPORTANT**: The section count is FLEXIBLE (5-8 sections). Choose what fits the content best. The templates below are starting points, not rigid constraints.
+**IMPORTANT**: Always use the following **6-section structure**. Do NOT add extra sections (no "Analysis", "Ablation", "Theory Part A/B", etc.). If the paper has theory, ablations, or analysis content, fold it into the Method or Experiment sections as subsections. The 6 standard sections are:
 
-**Empirical/Diagnostic paper:**
 ```
 1. Introduction (1.5 pages)
 2. Related Work (1 page)
-3. Method / Setup (1.5 pages)
-4. Experiments (3 pages)
-5. Analysis / Discussion (1 page)
+3. Method (2 pages)           — includes preliminaries, formulation, algorithm, proof sketches
+4. Experiments (2.5 pages)    — includes setup, main results, ablations, analysis
+5. Discussion (1 page)        — broader impact, limitations, connections to related work
 6. Conclusion (0.5 pages)
 ```
 
-**Theory + Experiments paper:**
-```
-1. Introduction (1.5 pages)
-2. Related Work (1 page)
-3. Preliminaries & Modeling (1.5 pages)
-4. Experiments (1.5 pages)
-5. Theory Part A (1.5 pages)
-6. Theory Part B (1.5 pages)
-7. Conclusion (0.5 pages)
-— Total: 9 pages
-```
-Theory papers often need 7 sections (splitting theory into estimation + optimization, or setup + analysis). The total page budget MUST sum to MAX_PAGES.
+The total page budget MUST sum to MAX_PAGES. Adjust per-section page allocation as needed, but keep exactly 6 sections.
 
-Theory papers should:
-- Include **proof sketch** locations (not just theorem statements)
-- Plan a **comparison table** of prior theoretical bounds vs. this paper's bounds
-- Identify which proofs go in appendix vs. main body
-
-**Method paper:**
-```
-1. Introduction (1.5 pages)
-2. Related Work (1 page)
-3. Method (2 pages)
-4. Experiments (2.5 pages)
-5. Ablation / Analysis (1 page)
-6. Conclusion (0.5 pages)
-```
+For theory-heavy papers: put proof sketches in §3 Method, full proofs in Appendix; include a comparison table of prior bounds vs. this paper's bounds in §4 Experiments.
 
 ### Step 3: Section-by-Section Planning
 
@@ -159,9 +134,14 @@ For each section, specify:
   - Table 1: [what it shows, which methods/baselines compared]
 - **Data source**: [which JSON files / experiment results]
 
-### §5 Conclusion
-- **Restatement**: [contributions rephrased, not copy-pasted from intro]
+### §5 Discussion
+- **Broader implications**: [what does this result mean for the field]
 - **Limitations**: [honest assessment — reviewers value this]
+- **Connections**: [how findings relate to broader trends or open problems]
+- **Estimated length**: 1 page
+
+### §6 Conclusion
+- **Restatement**: [contributions rephrased, not copy-pasted from intro]
 - **Future work**: [1-2 concrete directions]
 - **Estimated length**: 0.5 pages
 ```
@@ -277,7 +257,7 @@ Save the final outline to `PAPER_PLAN.md` in the project root:
 - **Claims-Evidence Matrix is the backbone** — every claim must map to evidence, every experiment must support a claim
 - **Front-load the story** — the outline should make the contribution clear in the title, abstract, introduction, and hero figure before the reader reaches the full method
 - **Figures need detailed descriptions** — especially the hero figure, which must clearly specify comparisons and visual expectations
-- **Section count is flexible** — 5-8 sections depending on paper type. Don't force content into a rigid 5-section template.
+- **Section count is fixed at 6** — Introduction, Related Work, Method, Experiments, Discussion, Conclusion. Fold all content into these sections.
 
 ## Acknowledgements
 

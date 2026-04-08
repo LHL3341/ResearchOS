@@ -77,14 +77,15 @@ paper/
 │   ├── 0_abstract.tex
 │   ├── 1_introduction.tex
 │   ├── 2_related_work.tex
-│   ├── 3_method.tex            # or preliminaries, setup, etc.
+│   ├── 3_method.tex
 │   ├── 4_experiments.tex
-│   ├── 5_conclusion.tex
+│   ├── 5_discussion.tex
+│   ├── 6_conclusion.tex
 │   └── A_appendix.tex          # proof details, extra experiments
 └── figures/                    # symlink or copy from project figures/
 ```
 
-**Section files are FLEXIBLE**: If the paper plan has 6-8 sections, create corresponding files (e.g., `4_theory.tex`, `5_experiments.tex`, `6_analysis.tex`, `7_conclusion.tex`).
+**Section structure is FIXED at 6 sections**: Introduction, Related Work, Method, Experiments, Discussion, Conclusion. Do NOT create extra section files. If the paper has theory, ablations, or analysis, fold them into Method or Experiments as subsections.
 
 ## Workflow
 
@@ -96,13 +97,16 @@ If `paper/` already exists, back up to `paper-backup-{timestamp}/` before overwr
 
 ### Step 1: Initialize Project
 
-1. Create `paper/` directory
+1. Create `paper/` directory with subdirectories: `sections/`, `figures/`, `tables/`
 2. Copy venue template from `templates/` — the template already includes:
    - All standard packages (amsmath, hyperref, cleveref, booktabs, etc.)
    - Theorem environments with `\crefname{assumption}` fix
    - Anonymous author block
+   - `\input{sections/...}` for each section (NEVER write section content directly in main.tex)
 3. Generate `math_commands.tex` with paper-specific notation
-4. Create section files matching PAPER_PLAN structure
+4. Create one .tex file per section in `sections/` matching the fixed 6-section structure
+
+**CRITICAL: Modular structure is mandatory.** `main.tex` must ONLY contain `\input{sections/...}` directives. All section content goes in `sections/*.tex` files. NEVER write section body text directly in `main.tex`.
 
 **Author block (anonymous mode):**
 ```latex
@@ -180,7 +184,13 @@ Before drafting the front matter, re-read the one-sentence contribution from `PA
 - For each major experiment, make explicit what claim it supports and what the reader should notice
 - Target: 2.5-3 pages
 
-**§5 Conclusion:**
+**§5 Discussion:**
+- Broader implications of the results
+- Honest limitations (reviewers appreciate this)
+- Connections to related work and open problems
+- Target: 0.5-1 page
+
+**§6 Conclusion:**
 - Summarize contributions (NOT copy-paste from intro — rephrase)
 - Limitations (be honest — reviewers appreciate this)
 - Future work (1-2 concrete directions)
@@ -339,14 +349,15 @@ Before declaring done:
 - **Large file handling**: If the Write tool fails due to file size, immediately retry using Bash (`cat << 'EOF' > file`) to write in chunks. Do NOT ask the user for permission — just do it silently.
 - **Do NOT generate author names, emails, or affiliations** — use anonymous block or placeholder
 - **Write complete sections, not outlines** — the output should be compilable LaTeX
-- **One file per section** — modular structure for easy editing
+- **One file per section** — modular structure for easy editing. NEVER write section content inline in main.tex.
+- **Directory structure is mandatory** — always create `sections/`, `figures/`, `tables/` directories
 - **Every claim must cite evidence** — cross-reference the Claims-Evidence Matrix
 - **Compile-ready** — the output should compile with `latexmk` without errors (modulo missing figures)
 - **No over-claiming** — use hedging language ("suggests", "indicates") for weak evidence
 - **Venue style matters** — all three venues (ICLR/NeurIPS/ICML) use `natbib` (`\citep`/`\citet`)
 - **Page limit = main body to Conclusion** — references and appendix do NOT count
 - **Clean bib** — references.bib must only contain entries that are actually `\cite`d
-- **Section count is flexible** — match PAPER_PLAN structure, don't force into 5 sections
+- **Section count is fixed at 6** — Introduction, Related Work, Method, Experiments, Discussion, Conclusion. Match this structure exactly.
 - **Backup before overwrite** — never destroy existing `paper/` directory without backing up
 - **Front-load the contribution** — do not hide the payoff until the experiments or appendix
 

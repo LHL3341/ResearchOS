@@ -54,3 +54,25 @@ apptainer exec /path/to/texlive.sif pdflatex main
 # 或安装 texlive
 # 参考 install-tl-unx.tar.gz
 ```
+
+### Claude Code 自动编译 Hook
+
+在 `.claude/settings.json` 中添加以下 hook，每次 Edit/Write `.tex` 或 `.bib` 文件后自动编译：
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE '\\.(tex|bib)'; then cd /your/project/paper && pdflatex -interaction=nonstopmode main.tex > /dev/null 2>&1; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
+```

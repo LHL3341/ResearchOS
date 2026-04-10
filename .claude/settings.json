@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys,json; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); any(f.endswith(e) for e in ('.tex','.bib')) and __import__('os').system('cd /root/ResearchOS/paper && bash build.sh')\" 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Compiling paper..."
+          }
+        ]
+      }
+    ]
+  }
+}

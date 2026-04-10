@@ -1,0 +1,912 @@
+{
+  "graph": {
+    "nodes": {
+      "cot": {
+        "id": "cot",
+        "name": "Chain-of-Thought Prompting",
+        "goal": "Improve LLM multi-step reasoning by eliciting intermediate steps",
+        "mechanism": "Insert step-by-step reasoning demonstrations in the prompt before the query, guiding the model to produce intermediate derivation steps rather than jumping to the answer.",
+        "assumptions": [
+          "Model >= 60B parameters",
+          "Task is decomposable into steps"
+        ],
+        "inputs": [
+          "Prompt template",
+          "Few-shot exemplars with reasoning chains",
+          "Query"
+        ],
+        "outputs": [
+          "Model output with explicit reasoning chain"
+        ],
+        "level": "prompting",
+        "required_resources": "No training; inference tokens increase 3-5x",
+        "empirical_gains": [
+          "GSM8K: 58% -> 75% (PaLM 540B)",
+          "SVAMP: +15% (GPT-3.5)"
+        ],
+        "failure_modes": [
+          "Unfaithful chains",
+          "Small models show no gain",
+          "Increased latency"
+        ],
+        "compatibility": [
+          "sc",
+          "verification",
+          "retrieval"
+        ],
+        "conflict": [
+          "direct_answer"
+        ],
+        "source_papers": [
+          "wei2022chain",
+          "kojima2022zeroshotcot"
+        ],
+        "tags": [
+          "reasoning",
+          "prompting",
+          "few-shot"
+        ]
+      },
+      "zerocot": {
+        "id": "zerocot",
+        "name": "Zero-shot CoT",
+        "goal": "Enable chain-of-thought reasoning without demonstrations",
+        "mechanism": "Append 'Let's think step by step' to the prompt to trigger reasoning without few-shot exemplars.",
+        "assumptions": [
+          "Model >= 100B parameters"
+        ],
+        "inputs": [
+          "Query with trigger phrase"
+        ],
+        "outputs": [
+          "Model output with reasoning chain"
+        ],
+        "level": "prompting",
+        "required_resources": "",
+        "empirical_gains": [
+          "MultiArith: 78.7% (zero-shot CoT vs 17.7% standard)"
+        ],
+        "failure_modes": [
+          "Lower quality chains than few-shot CoT",
+          "Inconsistent activation"
+        ],
+        "compatibility": [],
+        "conflict": [],
+        "source_papers": [
+          "kojima2022zeroshotcot"
+        ],
+        "tags": [
+          "reasoning",
+          "prompting",
+          "zero-shot"
+        ]
+      },
+      "sc": {
+        "id": "sc",
+        "name": "Self-Consistency",
+        "goal": "Improve reasoning reliability via majority voting over multiple chains",
+        "mechanism": "Sample multiple reasoning chains from the model with temperature > 0, extract the final answer from each, and return the most frequent answer (majority vote).",
+        "assumptions": [
+          "CoT is effective for the task",
+          "Multiple samples are affordable"
+        ],
+        "inputs": [
+          "CoT prompt",
+          "Number of samples K",
+          "Temperature"
+        ],
+        "outputs": [
+          "Majority-voted answer",
+          "Consistency score"
+        ],
+        "level": "inference-time",
+        "required_resources": "K times the compute of single CoT (typically K=5-40)",
+        "empirical_gains": [
+          "GSM8K: +6-8% over single CoT",
+          "ARC-c: +3%"
+        ],
+        "failure_modes": [
+          "Fails when all chains share systematic errors",
+          "High compute cost"
+        ],
+        "compatibility": [
+          "cot",
+          "tot"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "wang2023selfconsistency"
+        ],
+        "tags": [
+          "reasoning",
+          "ensemble",
+          "voting"
+        ]
+      },
+      "tot": {
+        "id": "tot",
+        "name": "Tree of Thoughts",
+        "goal": "Enable deliberate planning via tree-structured reasoning exploration",
+        "mechanism": "Decompose problem into thought steps, generate multiple candidates per step, evaluate each with a value function, and search the tree (BFS/DFS) to find the best reasoning path.",
+        "assumptions": [
+          "Task has evaluable intermediate states",
+          "Search budget available"
+        ],
+        "inputs": [
+          "Problem",
+          "Thought decomposition strategy",
+          "Value function",
+          "Search algorithm"
+        ],
+        "outputs": [
+          "Best reasoning path with justification"
+        ],
+        "level": "inference-time",
+        "required_resources": "10-100x compute of single CoT depending on branching/depth",
+        "empirical_gains": [
+          "Game of 24: 4% -> 74%",
+          "Creative writing: improved coherence"
+        ],
+        "failure_modes": [
+          "Exponential cost",
+          "Value function accuracy bottleneck"
+        ],
+        "compatibility": [
+          "sc",
+          "verification"
+        ],
+        "conflict": [
+          "direct_answer"
+        ],
+        "source_papers": [
+          "yao2023tree"
+        ],
+        "tags": [
+          "reasoning",
+          "search",
+          "planning"
+        ]
+      },
+      "got": {
+        "id": "got",
+        "name": "Graph of Thoughts",
+        "goal": "Enable non-linear reasoning via graph-structured thought exploration",
+        "mechanism": "Extend Tree of Thoughts by allowing merging and refining of thoughts, creating a DAG/graph structure instead of a tree. Supports aggregation of partial solutions.",
+        "assumptions": [
+          "Problem benefits from combining partial solutions"
+        ],
+        "inputs": [
+          "Problem",
+          "Graph operations (generate, aggregate, refine)",
+          "Scoring function"
+        ],
+        "outputs": [
+          "Optimized reasoning graph with solution"
+        ],
+        "level": "inference-time",
+        "required_resources": "",
+        "empirical_gains": [
+          "Sorting: improved over ToT",
+          "Set operations: +15% vs ToT"
+        ],
+        "failure_modes": [
+          "Complex implementation",
+          "Graph explosion"
+        ],
+        "compatibility": [],
+        "conflict": [],
+        "source_papers": [
+          "besta2024got"
+        ],
+        "tags": [
+          "reasoning",
+          "search",
+          "graph"
+        ]
+      },
+      "verification": {
+        "id": "verification",
+        "name": "Step-level Verification",
+        "goal": "Detect and correct errors in intermediate reasoning steps",
+        "mechanism": "Train or prompt a verifier model to score each intermediate step of a reasoning chain for correctness. Use process reward model (PRM) to assign step-level rewards.",
+        "assumptions": [
+          "Step-level annotations available",
+          "Verifier is more accurate than generator"
+        ],
+        "inputs": [
+          "Reasoning chain",
+          "Step boundaries",
+          "Verifier model"
+        ],
+        "outputs": [
+          "Per-step correctness scores",
+          "Identified error locations"
+        ],
+        "level": "inference-time",
+        "required_resources": "Separate verifier model (can be smaller); step-level training data",
+        "empirical_gains": [
+          "MATH: +5-10% with process supervision vs outcome supervision"
+        ],
+        "failure_modes": [
+          "Verifier errors cascade",
+          "Annotation cost for training"
+        ],
+        "compatibility": [
+          "cot",
+          "tot",
+          "sc"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "lightman2023lets"
+        ],
+        "tags": [
+          "reasoning",
+          "verification",
+          "reward-model"
+        ]
+      },
+      "reflexion": {
+        "id": "reflexion",
+        "name": "Reflexion",
+        "goal": "Enable LLM self-improvement through verbal self-reflection",
+        "mechanism": "After task failure, generate a verbal reflection analyzing what went wrong, store it in memory, and use it to inform the next attempt. Iterates until success or budget exhausted.",
+        "assumptions": [
+          "Environment provides success/failure signal",
+          "Model can self-diagnose"
+        ],
+        "inputs": [
+          "Task",
+          "Environment feedback",
+          "Reflection memory"
+        ],
+        "outputs": [
+          "Improved action trajectory",
+          "Accumulated reflections"
+        ],
+        "level": "inference-time",
+        "required_resources": "",
+        "empirical_gains": [
+          "AlfWorld: 134% improvement",
+          "HotpotQA: +14%"
+        ],
+        "failure_modes": [
+          "Reflection quality degrades with weak models",
+          "Infinite retry loops"
+        ],
+        "compatibility": [],
+        "conflict": [],
+        "source_papers": [
+          "shinn2023reflexion"
+        ],
+        "tags": [
+          "reasoning",
+          "self-improvement",
+          "reflection"
+        ]
+      },
+      "selfrefine": {
+        "id": "selfrefine",
+        "name": "Self-Refine",
+        "goal": "Iteratively improve LLM outputs via self-feedback",
+        "mechanism": "Generate initial output, then prompt the same model to critique it, then refine based on the critique. Repeat for N rounds.",
+        "assumptions": [
+          "Model can generate useful self-feedback"
+        ],
+        "inputs": [
+          "Initial output",
+          "Critique prompt",
+          "Refinement prompt"
+        ],
+        "outputs": [
+          "Refined output after N iterations"
+        ],
+        "level": "inference-time",
+        "required_resources": "",
+        "empirical_gains": [
+          "Code: +13% pass rate",
+          "Math reasoning: +5%"
+        ],
+        "failure_modes": [
+          "Diminishing returns after 2-3 rounds",
+          "Self-feedback can be incorrect"
+        ],
+        "compatibility": [
+          "cot",
+          "verification"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "madaan2023selfrefine"
+        ],
+        "tags": [
+          "reasoning",
+          "self-improvement",
+          "refinement"
+        ]
+      },
+      "pal": {
+        "id": "pal",
+        "name": "Program-Aided Language Models",
+        "goal": "Offload computation to code execution for faithful reasoning",
+        "mechanism": "Prompt LLM to generate Python code that solves the reasoning problem, then execute the code to obtain the answer. Separates reasoning (LLM) from computation (interpreter).",
+        "assumptions": [
+          "Problem is expressible as code",
+          "Code execution environment available"
+        ],
+        "inputs": [
+          "Problem description",
+          "Code generation prompt",
+          "Python interpreter"
+        ],
+        "outputs": [
+          "Generated code",
+          "Execution result"
+        ],
+        "level": "prompting",
+        "required_resources": "",
+        "empirical_gains": [
+          "GSM8K: +12% over CoT",
+          "Colored Objects: +30%"
+        ],
+        "failure_modes": [
+          "Code generation errors",
+          "Not applicable to non-computational tasks"
+        ],
+        "compatibility": [],
+        "conflict": [
+          "cot"
+        ],
+        "source_papers": [
+          "gao2023pal"
+        ],
+        "tags": [
+          "reasoning",
+          "tool-use",
+          "code-generation"
+        ]
+      },
+      "pot": {
+        "id": "pot",
+        "name": "Program of Thoughts",
+        "goal": "Disentangle computation from reasoning via code",
+        "mechanism": "Prompt LLM to express reasoning as interleaved natural language thoughts and executable code statements. Execute code parts, feed results back as context.",
+        "assumptions": [
+          "Problem has computational sub-tasks",
+          "Code interpreter available"
+        ],
+        "inputs": [
+          "Problem",
+          "Interleaved prompt template"
+        ],
+        "outputs": [
+          "Thought-code trace",
+          "Computed answer"
+        ],
+        "level": "prompting",
+        "required_resources": "",
+        "empirical_gains": [
+          "GSM8K: +8% over CoT",
+          "FinQA: +10%"
+        ],
+        "failure_modes": [
+          "Complex reasoning not easily expressible as code"
+        ],
+        "compatibility": [
+          "verification"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "chen2023program"
+        ],
+        "tags": [
+          "reasoning",
+          "tool-use",
+          "code-generation"
+        ]
+      },
+      "retrieval": {
+        "id": "retrieval",
+        "name": "Evidence-Grounded Retrieval for Reasoning",
+        "goal": "Ground reasoning steps in retrieved external evidence",
+        "mechanism": "At each reasoning step, retrieve relevant evidence from a knowledge corpus. The model conditions its next reasoning step on both the chain so far and the retrieved evidence.",
+        "assumptions": [
+          "Relevant knowledge corpus exists",
+          "Retriever is accurate enough"
+        ],
+        "inputs": [
+          "Reasoning chain so far",
+          "Knowledge corpus",
+          "Retriever model"
+        ],
+        "outputs": [
+          "Retrieved evidence",
+          "Evidence-grounded reasoning step"
+        ],
+        "level": "inference-time",
+        "required_resources": "",
+        "empirical_gains": [
+          "Multi-hop QA: +8-15% factual accuracy"
+        ],
+        "failure_modes": [
+          "Retriever noise",
+          "Corpus coverage gaps",
+          "Increased latency"
+        ],
+        "compatibility": [
+          "cot",
+          "verification"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "asai2024selfrag"
+        ],
+        "tags": [
+          "reasoning",
+          "retrieval",
+          "grounding"
+        ]
+      },
+      "tool_use": {
+        "id": "tool_use",
+        "name": "Tool-Augmented Reasoning",
+        "goal": "Extend LLM capabilities by calling external tools during reasoning",
+        "mechanism": "Teach or prompt the model to emit tool calls (calculator, search, code interpreter) at appropriate points in the reasoning chain, then inject tool outputs back into the context.",
+        "assumptions": [
+          "Tools are available and accessible",
+          "Model can learn tool call syntax"
+        ],
+        "inputs": [
+          "Problem",
+          "Available tool descriptions",
+          "Tool call format specification"
+        ],
+        "outputs": [
+          "Reasoning trace with tool calls and results"
+        ],
+        "level": "prompting",
+        "required_resources": "",
+        "empirical_gains": [
+          "Math: near-perfect with calculator",
+          "QA: +20% with search"
+        ],
+        "failure_modes": [
+          "Wrong tool selection",
+          "Tool API changes",
+          "Hallucinated tool calls"
+        ],
+        "compatibility": [
+          "cot",
+          "pal"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "schick2023toolformer"
+        ],
+        "tags": [
+          "reasoning",
+          "tool-use",
+          "augmentation"
+        ]
+      },
+      "direct_answer": {
+        "id": "direct_answer",
+        "name": "Direct Answer Prompting",
+        "goal": "Obtain answer directly without intermediate reasoning",
+        "mechanism": "Standard prompting: ask the question and expect a direct answer without chain-of-thought or other scaffolding.",
+        "assumptions": [
+          "Task is simple enough for direct recall"
+        ],
+        "inputs": [
+          "Query"
+        ],
+        "outputs": [
+          "Direct answer"
+        ],
+        "level": "prompting",
+        "required_resources": "",
+        "empirical_gains": [],
+        "failure_modes": [
+          "Fails on multi-step reasoning",
+          "No interpretability"
+        ],
+        "compatibility": [],
+        "conflict": [
+          "cot",
+          "tot"
+        ],
+        "source_papers": [],
+        "tags": [
+          "baseline",
+          "prompting",
+          "direct"
+        ]
+      },
+      "debate": {
+        "id": "debate",
+        "name": "Multi-Agent Debate",
+        "goal": "Improve reasoning quality through adversarial multi-agent discussion",
+        "mechanism": "Multiple LLM instances independently solve a problem, then iteratively debate their answers, challenging each other's reasoning. After N rounds, converge on a consensus answer.",
+        "assumptions": [
+          "Multiple LLM calls affordable",
+          "Diversity in initial solutions"
+        ],
+        "inputs": [
+          "Problem",
+          "Number of agents",
+          "Number of debate rounds"
+        ],
+        "outputs": [
+          "Consensus answer",
+          "Debate transcript"
+        ],
+        "level": "inference-time",
+        "required_resources": "",
+        "empirical_gains": [
+          "MMLU: +5% over single model",
+          "Math: +8%"
+        ],
+        "failure_modes": [
+          "Echo chamber with identical models",
+          "High compute cost"
+        ],
+        "compatibility": [
+          "cot",
+          "sc"
+        ],
+        "conflict": [],
+        "source_papers": [],
+        "tags": [
+          "reasoning",
+          "multi-agent",
+          "debate"
+        ]
+      },
+      "prm": {
+        "id": "prm",
+        "name": "Process Reward Model",
+        "goal": "Provide dense step-level feedback for reasoning chain generation",
+        "mechanism": "Train a reward model on step-level human annotations to score each intermediate step. Use as a value function for best-of-N selection or tree search guidance.",
+        "assumptions": [
+          "Step-level annotations available",
+          "Reward model generalizes to test distribution"
+        ],
+        "inputs": [
+          "Reasoning chain with step boundaries",
+          "Trained PRM model"
+        ],
+        "outputs": [
+          "Per-step reward scores",
+          "Aggregate chain quality score"
+        ],
+        "level": "training-time",
+        "required_resources": "Step-level annotation dataset (800K+ labels); GPU training for reward model",
+        "empirical_gains": [
+          "MATH: process supervision > outcome supervision (+8%)"
+        ],
+        "failure_modes": [
+          "Annotation cost",
+          "Reward hacking",
+          "Distribution shift"
+        ],
+        "compatibility": [
+          "verification",
+          "tot"
+        ],
+        "conflict": [],
+        "source_papers": [
+          "lightman2023lets"
+        ],
+        "tags": [
+          "reasoning",
+          "reward-model",
+          "process-supervision"
+        ]
+      }
+    },
+    "edges": [
+      {
+        "source_id": "zerocot",
+        "target_id": "cot",
+        "edge_type": "REFINES",
+        "confidence": 0.9,
+        "evidence": "Zero-shot CoT is a simplified variant of few-shot CoT"
+      },
+      {
+        "source_id": "got",
+        "target_id": "tot",
+        "edge_type": "REFINES",
+        "confidence": 0.85,
+        "evidence": "GoT extends ToT with graph structure"
+      },
+      {
+        "source_id": "pot",
+        "target_id": "pal",
+        "edge_type": "REFINES",
+        "confidence": 0.8,
+        "evidence": "PoT refines PAL with interleaved reasoning"
+      },
+      {
+        "source_id": "sc",
+        "target_id": "cot",
+        "edge_type": "ENHANCES",
+        "confidence": 0.95,
+        "evidence": "Self-consistency improves CoT via majority voting"
+      },
+      {
+        "source_id": "verification",
+        "target_id": "cot",
+        "edge_type": "ENHANCES",
+        "confidence": 0.9,
+        "evidence": "Step verification catches CoT errors"
+      },
+      {
+        "source_id": "retrieval",
+        "target_id": "cot",
+        "edge_type": "ENHANCES",
+        "confidence": 0.8,
+        "evidence": "Evidence grounding reduces hallucination in CoT"
+      },
+      {
+        "source_id": "prm",
+        "target_id": "tot",
+        "edge_type": "ENHANCES",
+        "confidence": 0.85,
+        "evidence": "PRM provides value function for tree search"
+      },
+      {
+        "source_id": "prm",
+        "target_id": "verification",
+        "edge_type": "ENHANCES",
+        "confidence": 0.9,
+        "evidence": "PRM is a trained step-level verifier"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "direct_answer",
+        "edge_type": "SUBSTITUTES",
+        "confidence": 0.7,
+        "evidence": "CoT replaces direct answering for complex tasks"
+      },
+      {
+        "source_id": "pal",
+        "target_id": "cot",
+        "edge_type": "SUBSTITUTES",
+        "confidence": 0.6,
+        "evidence": "PAL substitutes natural language chains with code"
+      },
+      {
+        "source_id": "tot",
+        "target_id": "cot",
+        "edge_type": "SUBSTITUTES",
+        "confidence": 0.5,
+        "evidence": "ToT is a more expensive alternative to CoT for hard problems"
+      },
+      {
+        "source_id": "selfrefine",
+        "target_id": "reflexion",
+        "edge_type": "SUBSTITUTES",
+        "confidence": 0.7,
+        "evidence": "Both do iterative self-improvement"
+      },
+      {
+        "source_id": "debate",
+        "target_id": "sc",
+        "edge_type": "SUBSTITUTES",
+        "confidence": 0.5,
+        "evidence": "Both use multiple solutions; debate via adversarial discussion"
+      },
+      {
+        "source_id": "pal",
+        "target_id": "direct_answer",
+        "edge_type": "CONFLICTS",
+        "confidence": 0.9,
+        "evidence": "PAL requires structured code generation"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "direct_answer",
+        "edge_type": "CONFLICTS",
+        "confidence": 0.95,
+        "evidence": "CoT and direct answering are mutually exclusive strategies"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "sc",
+        "edge_type": "COMPOSES",
+        "confidence": 0.95,
+        "evidence": "CoT + Self-Consistency is a standard pipeline"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "verification",
+        "edge_type": "COMPOSES",
+        "confidence": 0.9,
+        "evidence": "Generate chain then verify steps"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "retrieval",
+        "edge_type": "COMPOSES",
+        "confidence": 0.8,
+        "evidence": "Retrieve evidence to ground each CoT step"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "tool_use",
+        "edge_type": "COMPOSES",
+        "confidence": 0.8,
+        "evidence": "Use tools within a CoT reasoning chain"
+      },
+      {
+        "source_id": "verification",
+        "target_id": "reflexion",
+        "edge_type": "COMPOSES",
+        "confidence": 0.7,
+        "evidence": "Verify then reflect on failures"
+      },
+      {
+        "source_id": "tot",
+        "target_id": "verification",
+        "edge_type": "COMPOSES",
+        "confidence": 0.8,
+        "evidence": "Use verifier as value function in tree search"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "sc",
+        "edge_type": "PREREQUISITE",
+        "confidence": 0.95,
+        "evidence": "SC requires CoT to generate multiple chains"
+      },
+      {
+        "source_id": "cot",
+        "target_id": "verification",
+        "edge_type": "PREREQUISITE",
+        "confidence": 0.8,
+        "evidence": "Verification requires a reasoning chain to verify"
+      }
+    ]
+  },
+  "taxonomy": {
+    "name": "root",
+    "path": "root",
+    "description": "All research skills",
+    "skill_ids": [],
+    "children": [
+      {
+        "name": "Prompting Methods",
+        "path": "root/prompting",
+        "description": "Skills applied at the prompt level",
+        "skill_ids": [],
+        "children": [
+          {
+            "name": "Reasoning",
+            "path": "root/prompting/reasoning",
+            "description": "Skills related to reasoning",
+            "skill_ids": [
+              "cot",
+              "zerocot",
+              "pal",
+              "pot",
+              "tool_use"
+            ],
+            "children": []
+          },
+          {
+            "name": "Baseline",
+            "path": "root/prompting/baseline",
+            "description": "Skills related to baseline",
+            "skill_ids": [
+              "direct_answer"
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "Inference-time Methods",
+        "path": "root/inference-time",
+        "description": "Skills applied during model inference",
+        "skill_ids": [],
+        "children": [
+          {
+            "name": "Reasoning",
+            "path": "root/inference-time/reasoning",
+            "description": "Skills related to reasoning",
+            "skill_ids": [
+              "sc",
+              "tot",
+              "got",
+              "verification",
+              "reflexion",
+              "selfrefine",
+              "retrieval",
+              "debate"
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "Training Methods",
+        "path": "root/training-time",
+        "description": "Skills requiring model training or fine-tuning",
+        "skill_ids": [],
+        "children": [
+          {
+            "name": "Reasoning",
+            "path": "root/training-time/reasoning",
+            "description": "Skills related to reasoning",
+            "skill_ids": [
+              "prm"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "papers": {
+    "wei2022chain": {
+      "paper_id": "wei2022chain",
+      "title": "Chain-of-Thought Prompting",
+      "year": 2022
+    },
+    "kojima2022zeroshotcot": {
+      "paper_id": "kojima2022zeroshotcot",
+      "title": "Zero-shot CoT",
+      "year": 2022
+    },
+    "wang2023selfconsistency": {
+      "paper_id": "wang2023selfconsistency",
+      "title": "Self-Consistency",
+      "year": 2023
+    },
+    "yao2023tree": {
+      "paper_id": "yao2023tree",
+      "title": "Tree of Thoughts",
+      "year": 2023
+    },
+    "besta2024got": {
+      "paper_id": "besta2024got",
+      "title": "Graph of Thoughts",
+      "year": 2024
+    },
+    "lightman2023lets": {
+      "paper_id": "lightman2023lets",
+      "title": "Let's Verify Step by Step",
+      "year": 2023
+    },
+    "shinn2023reflexion": {
+      "paper_id": "shinn2023reflexion",
+      "title": "Reflexion",
+      "year": 2023
+    },
+    "madaan2023selfrefine": {
+      "paper_id": "madaan2023selfrefine",
+      "title": "Self-Refine",
+      "year": 2023
+    },
+    "gao2023pal": {
+      "paper_id": "gao2023pal",
+      "title": "PAL",
+      "year": 2023
+    },
+    "chen2023program": {
+      "paper_id": "chen2023program",
+      "title": "Program of Thoughts",
+      "year": 2023
+    },
+    "asai2024selfrag": {
+      "paper_id": "asai2024selfrag",
+      "title": "Self-RAG",
+      "year": 2024
+    },
+    "schick2023toolformer": {
+      "paper_id": "schick2023toolformer",
+      "title": "Toolformer",
+      "year": 2023
+    }
+  }
+}

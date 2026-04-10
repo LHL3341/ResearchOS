@@ -1,0 +1,79 @@
+{
+  "name": "root",
+  "path": "root",
+  "description": "All research skills",
+  "skill_ids": [],
+  "children": [
+    {
+      "name": "Prompting Methods",
+      "path": "root/prompting",
+      "description": "Skills applied at the prompt level",
+      "skill_ids": [],
+      "children": [
+        {
+          "name": "Reasoning",
+          "path": "root/prompting/reasoning",
+          "description": "Skills related to reasoning",
+          "skill_ids": [
+            "cot",
+            "zerocot",
+            "pal",
+            "pot",
+            "tool_use"
+          ],
+          "children": []
+        },
+        {
+          "name": "Baseline",
+          "path": "root/prompting/baseline",
+          "description": "Skills related to baseline",
+          "skill_ids": [
+            "direct_answer"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "Inference-time Methods",
+      "path": "root/inference-time",
+      "description": "Skills applied during model inference",
+      "skill_ids": [],
+      "children": [
+        {
+          "name": "Reasoning",
+          "path": "root/inference-time/reasoning",
+          "description": "Skills related to reasoning",
+          "skill_ids": [
+            "sc",
+            "tot",
+            "got",
+            "verification",
+            "reflexion",
+            "selfrefine",
+            "retrieval",
+            "debate"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "Training Methods",
+      "path": "root/training-time",
+      "description": "Skills requiring model training or fine-tuning",
+      "skill_ids": [],
+      "children": [
+        {
+          "name": "Reasoning",
+          "path": "root/training-time/reasoning",
+          "description": "Skills related to reasoning",
+          "skill_ids": [
+            "prm"
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

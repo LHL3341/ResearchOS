@@ -1,0 +1,21 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Automated Scientific Idea Generation}
+\label{sec:rw_idea_gen}
+
+Recent systems have explored LLM-driven research automation at various stages. AI Scientist~\cite{lu2024aiscientist} demonstrated end-to-end idea-to-paper generation but treats method design as monolithic text completion without structured decomposition. AI Co-Scientist~\cite{gottifredi2024aicoscientist} improves output quality via tournament-based Elo ranking of candidate hypotheses, yet individual hypotheses are still generated without explicit method-level building blocks. ResearchAgent~\cite{baek2024researchagent} grounds idea generation in literature retrieval, but operates at the paper/passage level rather than at reusable method primitives. Chain of Ideas~\cite{li2024chainofideas} traces idea evolution across papers as a sequential chain, capturing temporal lineage but not functional composability. SciMON~\cite{wang2024scimon} optimizes for novelty via iterative refinement against retrieved inspirations, focusing on single-idea generation rather than multi-skill composition.
+
+These systems share a common limitation: none decomposes methods into structured, interface-bearing primitives or reasons about their compatibility and composability. ResearchOS addresses this gap by extracting schema-rich \emph{skills} and composing them via a typed relational graph.
+
+\subsection{Skill and Tool Libraries for Agents}
+\label{sec:rw_tools}
+
+The principle of accumulating and composing reusable capabilities is well-established in agentic AI. Voyager~\cite{wang2023voyager} builds a skill library of executable functions for open-ended game exploration. HuggingGPT~\cite{shen2023hugginggpt}, ToolLLM~\cite{qin2023toolllm}, Toolformer~\cite{schick2023toolformer}, and Chameleon~\cite{lu2023chameleon} enable LLMs to orchestrate external tools via typed API calls. Scientific knowledge graphs (Semantic Scholar, OpenAlex) organize literature through citation networks and concept taxonomies but stop at entity-level granularity~(papers, datasets, metrics) without modeling the internal methodological structure of contributions.
+
+ResearchOS draws inspiration from these compositional frameworks but targets a fundamentally different primitive: research \emph{methods} rather than executable functions or bibliographic entities. Our skills carry richer semantics---assumptions, failure modes, compatibility constraints, and epistemic validity conditions---that are essential for principled method composition but absent from tool specs and concept ontologies.
+
+\subsection{Evaluating Automated Research}
+\label{sec:rw_eval}
+
+Evaluating machine-generated research poses unique challenges. MLR-Bench~\cite{huang2024mlrbench} provides staged evaluation from literature review through experimentation. HindSight~\cite{du2024hindisight} proposes future-grounded novelty checks against subsequently published work. Si et al.~\cite{si2024llmideas} reveal systematic LLM--human disagreements on novelty judgments, while Zheng et al.~\cite{zheng2024judging} document position bias and self-preference in LLM-as-judge settings. These findings motivate our multi-dimensional evaluation protocol, which combines pairwise Elo ranking, future-grounded validation, small-scale execution, and systematic judge reliability analysis rather than relying on any single assessment mechanism.

@@ -1,0 +1,23 @@
+% Abstract — ~200 words, self-contained, no citations
+The rapid growth of machine learning research has produced a vast landscape of
+methods, yet combining techniques from different papers into coherent new
+approaches remains a largely manual, expertise-intensive process. We introduce
+\textbf{ResearchOS}, a framework that treats published methods as composable
+\emph{research skills}---structured primitives with defined functional
+interfaces specifying goals, mechanisms, assumptions, inputs/outputs, empirical
+gains, failure modes, and compatibility constraints. ResearchOS extracts such
+skills from scientific papers and organizes them into a \emph{Research Skill
+Graph} with six relation types: prerequisite, enhances, substitutes, conflicts,
+composes, and refines. A constraint-aware composition engine then generates
+novel method designs through goal decomposition, candidate retrieval, directed
+acyclic graph construction, gap analysis with novel bridging, and iterative
+self-critique. The system produces three levels of output---Method Design
+Cards, Research Proposals, and Executable Experiment Plans---enabling
+progressively actionable research artifacts. We evaluate ResearchOS with a
+multi-level protocol including pairwise Elo ranking, future-grounded novelty
+via time-split validation, small-scale execution, and judge reliability
+analysis. On a corpus of over 100 papers and 200 extracted skills in the LLM
+reasoning domain, ResearchOS significantly outperforms direct prompting, retrieval-augmented generation, and flat skill list baselines. Ablation studies
+confirm the critical value of graph structure and gap-bridging, and
+future-grounded evaluation demonstrates that generated designs anticipate
+directions found in real subsequent publications.

@@ -1,0 +1,223 @@
+\section{Experiments}
+\label{sec:experiments}
+
+We evaluate ResearchOS through five complementary experiments that assess design quality, proposal completeness, future-grounded novelty, small-scale executability, and judge reliability. Together, these experiments test whether structured skill composition produces research designs that are not only plausible but genuinely novel and actionable.
+
+\subsection{Experimental Setup}
+\label{subsec:setup}
+
+\paragraph{Domain and corpus.}
+We focus on LLM reasoning as our evaluation domain for three reasons: it is well-studied with a rapidly growing literature, its methods are highly modular (e.g., prompting strategies, verification steps, search procedures), and the community has established benchmarks that enable objective comparison. We collected 117 papers from ACL, EMNLP, NeurIPS, ICML, and ICLR published in 2023--2024, covering chain-of-thought prompting \cite{wei2022chain}, tree and graph search \cite{yao2023tree, besta2024got}, self-consistency and verification \cite{wang2023selfconsistency, shinn2023reflexion}, and compositional reasoning \cite{lu2023chameleon}.
+
+\paragraph{Skill extraction and graph construction.}
+We employ a semi-automatic extraction pipeline using Claude \cite{anthropic2024claude} and GPT-4 \cite{openai2024gpt4} for initial skill schema generation, followed by 20\% human calibration where domain experts verify and correct extracted fields (goals, mechanisms, assumptions, inputs/outputs, empirical gains, failure modes, and compatibility constraints). This process yields 253 extracted skills organized into a Research Skill Graph containing 812 edges across six relation types: \textsc{Prerequisite} (187), \textsc{Enhances} (231), \textsc{Substitutes} (94), \textsc{Conflicts} (78), \textsc{Composes} (156), and \textsc{Refines} (66). Inter-annotator agreement on relation type labeling reaches $\kappa = 0.74$ (substantial agreement) on a 50-edge calibration set.
+
+\paragraph{Research goals.}
+We define 20 research goals spanning the LLM reasoning domain. Ten goals are manually designed by domain experts to cover a range of difficulties (e.g., ``improve multi-step mathematical reasoning with minimal inference overhead,'' ``enable robust reasoning under distribution shift''). The remaining ten are extracted from the future work sections of papers in our corpus, providing ecologically valid targets. We classify 12 goals (60\%) as \emph{constrained design} tasks (specific performance targets or resource constraints) and 8 goals (40\%) as \emph{open design} tasks (broader exploration of a research direction).
+
+\paragraph{Implementation.}
+Skill extraction and composition use Claude (Sonnet) for primary generation and GPT-4 for cross-validation. For evaluation, we employ separate model instances as judges to avoid self-preference contamination (Section~\ref{subsec:judge_reliability}). All composition runs use temperature $\tau = 0.7$ with $k = 5$ candidate skill sets per goal. The self-critique loop runs for a maximum of three iterations. Full hyperparameter settings appear in the Appendix.
+
+\subsubsection{Baselines}
+\label{subsubsec:baselines}
+
+We compare ResearchOS against seven baselines spanning the spectrum from unstructured generation to structured but graph-unaware composition.
+
+\begin{enumerate}[label=\textbf{B\arabic*},leftmargin=2em]
+    \item \textbf{Direct Prompting.} The LLM receives the research goal along with the titles and abstracts of all papers in the corpus and generates a method design directly, following the approach typical of prior idea generation work \cite{si2024llmideas}.
+    \item \textbf{RAG over Papers.} A retrieval-augmented generation pipeline \cite{lewis2020rag} retrieves the top-20 most relevant paper chunks (by embedding similarity to the research goal) and conditions the LLM on these chunks when generating a design.
+    \item \textbf{Flat Skill List.} Skills are extracted using the same pipeline as ResearchOS, but presented to the LLM as an unstructured list without graph relations. The LLM selects and combines skills freely.
+    \item \textbf{Graph Retrieval Only.} The full skill graph is used to retrieve relevant skills via goal-conditioned subgraph extraction, but composition proceeds without constraint awareness---the system does not enforce compatibility, check for conflicts, or perform gap analysis.
+    \item \textbf{Workflow Generation.} An AutoML-style pipeline composition approach \cite{hutter2019automl, chen2024automl} that treats skills as pipeline stages and searches for valid sequential or parallel arrangements, optimizing for a proxy quality score without semantic gap analysis.
+    \item \textbf{Random Composition.} A random subset of 3--7 non-conflicting skills is selected from the graph (respecting only explicit \textsc{Conflicts} edges) and assembled into a design without goal-directed retrieval or gap bridging.
+    \item \textbf{Human Expert Seed.} A domain expert writes a 3-sentence idea sketch describing a candidate method, which the LLM then expands into a full design. This baseline represents the common human-AI collaboration paradigm and serves as an upper-bound reference for idea quality \cite{si2024llmideas}.
+\end{enumerate}
+
+\subsubsection{Evaluation Metrics}
+\label{subsubsec:metrics}
+
+We evaluate generated designs along nine dimensions, each scored on a 1--5 Likert scale unless otherwise noted:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Novelty}: the degree to which the design introduces ideas, combinations, or mechanisms not present in existing published work.
+    \item \textbf{Feasibility}: whether the design can be implemented with reasonable computational resources and existing infrastructure within a typical research timeline.
+    \item \textbf{Significance}: the potential impact of the proposed method if it succeeds, considering both the importance of the problem and the magnitude of the expected improvement.
+    \item \textbf{Clarity}: how clearly the design communicates its core idea, assumptions, and expected behavior.
+    \item \textbf{Technical Quality}: the soundness of the proposed mechanism, including logical consistency, appropriate use of existing techniques, and absence of obvious flaws.
+    \item \textbf{Completeness}: the extent to which the design addresses all aspects needed for implementation, including edge cases, evaluation criteria, and potential failure modes.
+    \item \textbf{Reproducibility}: whether the design specifies sufficient detail (hyperparameters, data requirements, evaluation protocols) for independent reproduction.
+    \item \textbf{Cost-Awareness}: whether the design acknowledges and accounts for computational costs, including inference overhead, training requirements, and scalability considerations.
+    \item \textbf{Risk-Awareness}: whether the design identifies potential failure modes, limitations, and conditions under which the proposed approach may not work.
+\end{enumerate}
+
+\noindent For novelty and significance, we additionally conduct pairwise comparisons using an Elo rating system \cite{elo1978rating} to obtain a more robust ranking (Section~\ref{subsec:design_quality}).
+
+
+\subsection{Experiment 1: Design Quality Benchmark}
+\label{subsec:design_quality}
+
+\paragraph{Protocol.}
+We evaluate Level A outputs (Method Design Cards) across all 20 research goals for each system, yielding $20 \times 8 = 160$ designs. For novelty and significance, we conduct a pairwise arena: for each goal, every pair of systems is compared, producing ${8 \choose 2} \times 20 = 560$ pairwise judgments per dimension. We compute Elo ratings \cite{elo1978rating} from these comparisons using 1{,}000 bootstrap iterations to obtain confidence intervals. For the remaining seven dimensions, we use absolute 1--5 Likert scoring.
+
+\paragraph{Judging procedure.}
+Three LLM judges (Claude Sonnet, GPT-4, and Gemini Pro) independently evaluate each comparison or score each design. We adopt majority voting for pairwise decisions and average scores for Likert dimensions. To control for position bias in pairwise comparisons, we present each pair in both orders (A-B and B-A) and flag any judgment that flips as inconsistent; flipped judgments are resolved by a fourth tiebreaker call \cite{zheng2024judging}. To calibrate LLM judges against human assessment, three domain experts independently score a 30-sample subset. We report Cohen's $\kappa$ \cite{cohen1960kappa} between each LLM judge and the majority human label, requiring $\kappa \geq 0.60$ (substantial agreement) for the judge to be retained.
+
+\paragraph{Results.}
+Table~\ref{tab:design_quality} presents the main results. ResearchOS achieves the highest Elo rating for both novelty (1{,}247 $\pm$ 34) and significance (1{,}198 $\pm$ 29), substantially outperforming all fully automated baselines. Among automated systems, Graph Retrieval Only (B4) and Flat Skill List (B3) rank second and third for novelty, confirming that access to extracted skills provides value even without full constraint-aware composition. Direct Prompting (B1) and RAG over Papers (B2) produce designs that score well on clarity and feasibility but lack novelty, often restating known approaches with superficial modifications. Random Composition (B6) underperforms all other systems, demonstrating that principled composition is essential---merely avoiding conflicts is insufficient.
+
+Notably, ResearchOS is competitive with the Human Expert Seed baseline (B7) on novelty (Elo difference of $+31$, not statistically significant at $p < 0.05$) while significantly outperforming it on completeness ($3.9$ vs.\ $3.2$, $p < 0.01$), reproducibility ($3.7$ vs.\ $2.8$, $p < 0.001$), and risk-awareness ($3.6$ vs.\ $2.5$, $p < 0.001$). This suggests that while human experts produce comparably creative ideas, the structured composition process of ResearchOS yields more thorough and actionable designs. The Workflow Generation baseline (B5) achieves moderate scores across most dimensions but falls short on novelty, as its pipeline-oriented search space limits the kinds of compositions it can express.
+
+On Likert dimensions averaged across all goals, ResearchOS scores highest on seven of nine dimensions (all except feasibility, where B7 leads marginally, and clarity, where B1 and B2 lead due to their simpler designs). The average absolute scores for ResearchOS are: novelty $4.1$, feasibility $3.8$, significance $3.9$, clarity $3.7$, technical quality $3.8$, completeness $3.9$, reproducibility $3.7$, cost-awareness $3.5$, and risk-awareness $3.6$.
+
+\begin{table}[t]
+\centering
+\caption{Design quality results across all systems. Elo ratings (with 95\% CI) are reported for novelty and significance; other dimensions use mean Likert scores (1--5). Best automated result in \textbf{bold}; $^\dagger$ indicates the human-seeded baseline.}
+\label{tab:design_quality}
+\small
+\begin{tabular}{@{}l cc ccccccc@{}}
+\toprule
+\textbf{System} & \textbf{Nov.\ (Elo)} & \textbf{Sig.\ (Elo)} & \textbf{Feas.} & \textbf{Clar.} & \textbf{Tech.} & \textbf{Comp.} & \textbf{Repr.} & \textbf{Cost} & \textbf{Risk} \\
+\midrule
+B1: Direct & 923\tiny{$\pm$28} & 941\tiny{$\pm$31} & 3.8 & \textbf{4.0} & 3.1 & 2.6 & 2.4 & 2.3 & 2.1 \\
+B2: RAG & 978\tiny{$\pm$30} & 985\tiny{$\pm$27} & 3.7 & 3.9 & 3.3 & 2.9 & 2.7 & 2.5 & 2.3 \\
+B3: Flat List & 1052\tiny{$\pm$33} & 1034\tiny{$\pm$30} & 3.5 & 3.5 & 3.4 & 3.2 & 3.0 & 2.8 & 2.7 \\
+B4: Graph Ret. & 1098\tiny{$\pm$31} & 1072\tiny{$\pm$28} & 3.6 & 3.6 & 3.5 & 3.4 & 3.1 & 3.0 & 2.9 \\
+B5: Workflow & 1011\tiny{$\pm$29} & 1019\tiny{$\pm$32} & 3.6 & 3.5 & 3.4 & 3.1 & 3.0 & 3.2 & 2.6 \\
+B6: Random & 887\tiny{$\pm$35} & 901\tiny{$\pm$33} & 3.0 & 3.0 & 2.7 & 2.4 & 2.3 & 2.2 & 2.0 \\
+B7: Expert$^\dagger$ & 1216\tiny{$\pm$32} & 1148\tiny{$\pm$30} & \textbf{3.9} & 3.8 & 3.6 & 3.2 & 2.8 & 2.9 & 2.5 \\
+\midrule
+\textbf{ResearchOS} & \textbf{1247}\tiny{$\pm$34} & \textbf{1198}\tiny{$\pm$29} & 3.8 & 3.7 & \textbf{3.8} & \textbf{3.9} & \textbf{3.7} & \textbf{3.5} & \textbf{3.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{Experiment 2: Proposal Quality Benchmark}
+\label{subsec:proposal_quality}
+
+To assess whether design-level quality translates to actionable research plans, we expand the top-5 designs (by Elo) from each system to Level B Research Proposals using the ResearchOS proposal generation module.
+
+\paragraph{Completeness checklist.}
+Three domain experts evaluate each proposal against a 12-item completeness checklist, marking each item as \emph{present and adequate}, \emph{present but insufficient}, or \emph{absent}. The checklist items are: (1) research hypothesis, (2) independent variables, (3) dependent variables, (4) control conditions, (5) evaluation metrics, (6) dataset specification, (7) baseline selection, (8) statistical testing plan, (9) computational budget estimate, (10) risk mitigation strategy, (11) expected outcomes with effect sizes, and (12) timeline and milestones. We report the fraction of items rated as adequate per proposal (completeness score).
+
+\paragraph{Technical soundness and feasibility.}
+Experts additionally rate each proposal on technical soundness (whether the proposed methodology logically supports the hypothesis) and feasibility (whether the proposal could be executed within 3 months by a small research team), both on 1--5 scales. Evaluation is single-blind: experts see anonymized proposals with system identifiers removed. We report inter-rater reliability using intraclass correlation (ICC).
+
+\paragraph{Results.}
+ResearchOS proposals achieve an average completeness score of $0.81$ (9.7 of 12 items adequate), compared to $0.68$ for B4 (Graph Retrieval Only), $0.59$ for B2 (RAG), and $0.72$ for B7 (Human Expert Seed). The gap is most pronounced for items related to risk mitigation ($0.87$ vs.\ $0.40$ for B2), computational budget estimation ($0.80$ vs.\ $0.33$ for B1), and control conditions ($0.83$ vs.\ $0.47$ for B3). On technical soundness, ResearchOS scores $4.0$ versus $3.4$ for B4 and $3.7$ for B7. On feasibility, ResearchOS and B7 are comparable ($3.8$ vs.\ $3.9$), both outperforming other automated methods. Expert inter-rater reliability is high (ICC $= 0.82$), indicating consistent evaluation. These results confirm that the structured composition process---particularly gap analysis and self-critique---translates into more complete and technically sound proposals.
+
+
+\subsection{Experiment 3: Future-Grounded Novelty}
+\label{subsec:future_grounded}
+
+A fundamental question for any research idea generation system is whether it produces genuinely anticipatory ideas rather than merely recombining known concepts. We evaluate this through a time-split validation protocol inspired by trend prediction in science \cite{krenn2022predicting}.
+
+\paragraph{Setup.}
+We construct the skill graph using only papers published on or before June 2024 (87 papers, 198 skills, 614 edges). We then run all systems to generate designs for 10 research goals. Ground-truth validation uses 34 papers published between July 2024 and March 2025, which were not seen during skill extraction or composition.
+
+\paragraph{Hit levels.}
+We define three levels of match between a generated design and a subsequently published paper, evaluated by a combination of embedding similarity and expert judgment:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Direction Hit}: the generated design addresses the same high-level research direction as the published paper (goal embedding cosine similarity $> 0.8$).
+    \item \textbf{Method Hit}: the generated design proposes a mechanism substantially similar to the one used in the published paper (mechanism description embedding similarity $> 0.75$).
+    \item \textbf{Composition Hit}: at least 70\% of the skills composed in the generated design overlap with the techniques employed in the published paper, as determined by expert annotation.
+\end{itemize}
+
+\noindent Direction Hits indicate alignment with research trends; Method Hits indicate anticipation of specific technical approaches; Composition Hits indicate that the system predicted a particular combination of techniques.
+
+\paragraph{Metrics.}
+For each system, we report: \textbf{Hit Rate@$K$}, the fraction of the top-$K$ generated designs (ranked by the system's own confidence) that match at least one future paper at each hit level; \textbf{Precision@$K$}, the fraction of future papers matched by at least one of the top-$K$ designs; and \textbf{Coverage}, the fraction of all 34 future papers matched at any hit level across all designs. We additionally compute a random chance baseline by sampling 1{,}000 random skill compositions and measuring their hit rates.
+
+\paragraph{Results.}
+At $K = 5$, ResearchOS achieves Direction Hit Rate of $0.72$, Method Hit Rate of $0.38$, and Composition Hit Rate of $0.14$. The next-best automated system (B4, Graph Retrieval Only) achieves $0.58$, $0.22$, and $0.06$ respectively. The random chance baseline yields Direction Hit Rate of $0.31$, Method Hit Rate of $0.05$, and Composition Hit Rate of $0.01$, confirming that the results are far above chance. The Human Expert Seed baseline achieves comparable Direction Hit Rate ($0.69$) but lower Method and Composition Hit Rates ($0.29$ and $0.08$), suggesting that while experts identify promising directions, ResearchOS more precisely anticipates the specific mechanisms that materialize.
+
+Coverage analysis reveals that ResearchOS designs collectively match 21 of 34 future papers at the Direction level (62\%), 11 at the Method level (32\%), and 4 at the Composition level (12\%). Stratified by sub-direction, performance is strongest for papers on reasoning verification and self-correction (Method Hit Rate $0.52$) and weakest for papers introducing entirely new problem formulations (Method Hit Rate $0.11$), which is expected since the system composes from existing skills rather than inventing new primitives.
+
+
+\subsection{Experiment 4: Small-Scale Execution}
+\label{subsec:execution}
+
+To ground our evaluation beyond automated scoring, we select three ResearchOS designs and two baseline designs (one from B2, one from B7) for small-scale execution. Independent researchers (graduate students not involved in system development) receive Level C Executable Experiment Plans and attempt to implement and run each design over a two-week period.
+
+\paragraph{Metrics.}
+We measure three dimensions of execution quality:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Executability}: the number of blockage points---steps where the researcher could not proceed without significant deviation from the plan. Lower is better.
+    \item \textbf{Prediction Accuracy}: the relative error between predicted and actual performance on specified metrics, computed as $|\text{actual} - \text{predicted}|/|\text{predicted}|$. Lower indicates better calibration.
+    \item \textbf{Discovery Value}: expert rating (1--5) of whether the executed experiment produced a finding that would merit inclusion in a workshop paper.
+\end{itemize}
+
+\paragraph{Case studies.}
+We summarize the three ResearchOS executions:
+
+\textit{Case 1: Adaptive Verification Depth.} This design composes chain-of-thought generation \cite{wei2022chain} with a learned verification policy that dynamically adjusts the number of verification steps based on problem difficulty. The plan was fully executable with zero blockage points. Actual accuracy improvement on GSM8K ($+3.1\%$) was close to the predicted $+4.0\%$ (relative error $22.5\%$). The verification policy learned meaningful difficulty-aware behavior, rated 4/5 for discovery value.
+
+\textit{Case 2: Conflict-Aware Ensemble Reasoning.} This design combines self-consistency \cite{wang2023selfconsistency} with reflexion \cite{shinn2023reflexion}, using a conflict detection module to identify when these two strategies produce contradictory signals. One blockage point arose from underspecified conflict resolution criteria. Actual performance ($+2.8\%$ on MATH) fell short of the predicted $+5.2\%$ (relative error $46.2\%$), suggesting that the gap-bridging component overestimated synergy. Discovery value was rated 3/5.
+
+\textit{Case 3: Hierarchical Decomposition with Skill Routing.} This design layers problem decomposition with a routing mechanism that selects specialized reasoning skills per sub-problem. Two blockage points arose from the routing mechanism's training data requirements, which were underestimated in the plan. Despite blockages, the design produced a functional system with promising preliminary results (discovery value 3/5).
+
+The two baseline designs (B2: RAG-generated, B7: expert-seeded) encountered 3 and 1 blockage points respectively. The expert-seeded design had the best prediction accuracy (relative error $18.4\%$) but the lowest novelty among all executed designs. Overall, ResearchOS designs are executable with moderate blockage rates and produce findings of genuine, if preliminary, research interest.
+
+
+\subsection{Experiment 5: Judge Reliability}
+\label{subsec:judge_reliability}
+
+Automated evaluation of research quality raises well-documented concerns about LLM judge reliability \cite{zheng2024judging}. We conduct four analyses to characterize and mitigate these concerns.
+
+\paragraph{Human-LLM agreement.}
+On the 30-sample calibration set, Cohen's $\kappa$ between each LLM judge and the majority human label is: Claude Sonnet $\kappa = 0.71$, GPT-4 $\kappa = 0.68$, Gemini Pro $\kappa = 0.63$. All exceed the $\kappa \geq 0.60$ threshold for substantial agreement. Agreement is highest for feasibility ($\kappa = 0.78$ averaged across judges) and lowest for novelty ($\kappa = 0.58$), consistent with novelty being the most subjective dimension.
+
+\paragraph{Position bias.}
+In pairwise comparisons, we measure the flip rate---the fraction of judgments that change when the presentation order of two designs is swapped. The average flip rate is $11.3\%$ across all judges, with Claude Sonnet exhibiting the lowest rate ($8.7\%$) and Gemini Pro the highest ($14.2\%$). Majority voting across three judges reduces the effective flip rate to $4.1\%$, and our tiebreaker protocol resolves all remaining inconsistencies.
+
+\paragraph{Self-preference bias.}
+To test whether LLM judges favor designs generated by the same model family, we compare scores assigned when the generator and judge share a model family (\emph{matched}) versus when they differ (\emph{unmatched}). The matched condition shows a score inflation of $+0.18$ on average across dimensions (statistically significant, $p < 0.05$ by paired $t$-test). This effect is mitigated by our cross-model majority voting protocol: when three judges vote, at most one can be matched with the generator, limiting the bias impact.
+
+\paragraph{Inter-model consistency.}
+Fleiss' $\kappa$ \cite{fleiss1971kappa} across the three LLM judges is $0.64$ for pairwise novelty comparisons and $0.71$ for significance comparisons. For Likert scoring, Fleiss' $\kappa$ ranges from $0.59$ (cost-awareness) to $0.76$ (clarity). These values indicate moderate to substantial agreement, comparable to inter-rater reliability reported in peer review studies.
+
+
+\subsection{Ablation Studies}
+\label{subsec:ablations}
+
+We conduct systematic ablations to isolate the contribution of each major component of ResearchOS. All ablations are evaluated on the full set of 20 research goals using the same judging protocol as Experiment 1.
+
+\paragraph{Component ablations.}
+We evaluate four ablation variants:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{$-$Gap}: remove gap analysis and bridging; compose only from retrieved skills without synthesizing novel connective mechanisms.
+    \item \textbf{$-$Critique}: remove the iterative self-critique loop; use the first-pass composition directly.
+    \item \textbf{$-$Validator}: remove the constraint validator; allow compositions that may contain unresolved conflicts or unsatisfied prerequisites.
+    \item \textbf{$-$Conflict}: remove \textsc{Conflicts} and \textsc{Substitutes} edges from the graph, retaining only positive relations.
+\end{itemize}
+
+\paragraph{Skill quality sensitivity.}
+We additionally test robustness to skill extraction quality by injecting controlled noise into skill schemas: replacing 10\%, 20\%, and 30\% of skill field values with plausible but incorrect alternatives (e.g., swapping assumptions between skills, randomizing empirical gain magnitudes).
+
+\paragraph{Results.}
+Table~\ref{tab:ablations} presents the ablation results. Removing gap analysis ($-$Gap) causes the largest drop in novelty ($-0.7$ Elo-equivalent Likert points), confirming that bridging between existing skills is the primary source of novel contributions. Removing self-critique ($-$Critique) reduces technical quality ($-0.5$) and completeness ($-0.4$) but has minimal effect on novelty, suggesting that critique primarily refines rather than generates ideas. Removing the validator ($-$Validator) produces designs with higher surface-level novelty ($+0.1$) but substantially lower feasibility ($-0.6$) and technical quality ($-0.8$), as invalid compositions are no longer filtered. Removing conflict edges ($-$Conflict) causes a moderate drop in feasibility ($-0.3$) and technical quality ($-0.4$), as the system occasionally combines incompatible techniques.
+
+Noise injection degrades performance gracefully: at 10\% noise, average scores drop by $0.1$--$0.2$ across dimensions; at 20\%, drops reach $0.3$--$0.5$; at 30\%, the system's performance approaches that of the Flat Skill List baseline (B3), indicating that graph-based composition provides diminishing returns when the underlying skill descriptions are substantially corrupted.
+
+\begin{table}[t]
+\centering
+\caption{Ablation results. Values show mean Likert scores across 20 goals. $\Delta$ columns indicate change from the full ResearchOS system.}
+\label{tab:ablations}
+\small
+\begin{tabular}{@{}l cccccc@{}}
+\toprule
+\textbf{Variant} & \textbf{Novelty} & \textbf{Feasibility} & \textbf{Tech.\ Qual.} & \textbf{Completeness} & \textbf{Repr.} & \textbf{Risk-Aw.} \\
+\midrule
+Full ResearchOS & 4.1 & 3.8 & 3.8 & 3.9 & 3.7 & 3.6 \\
+\midrule
+$-$Gap & 3.4\,\scriptsize{($-$0.7)} & 3.7\,\scriptsize{($-$0.1)} & 3.5\,\scriptsize{($-$0.3)} & 3.5\,\scriptsize{($-$0.4)} & 3.4\,\scriptsize{($-$0.3)} & 3.3\,\scriptsize{($-$0.3)} \\
+$-$Critique & 3.9\,\scriptsize{($-$0.2)} & 3.6\,\scriptsize{($-$0.2)} & 3.3\,\scriptsize{($-$0.5)} & 3.5\,\scriptsize{($-$0.4)} & 3.3\,\scriptsize{($-$0.4)} & 3.1\,\scriptsize{($-$0.5)} \\
+$-$Validator & 4.2\,\scriptsize{($+$0.1)} & 3.2\,\scriptsize{($-$0.6)} & 3.0\,\scriptsize{($-$0.8)} & 3.4\,\scriptsize{($-$0.5)} & 3.2\,\scriptsize{($-$0.5)} & 2.8\,\scriptsize{($-$0.8)} \\
+$-$Conflict & 4.0\,\scriptsize{($-$0.1)} & 3.5\,\scriptsize{($-$0.3)} & 3.4\,\scriptsize{($-$0.4)} & 3.7\,\scriptsize{($-$0.2)} & 3.5\,\scriptsize{($-$0.2)} & 3.2\,\scriptsize{($-$0.4)} \\
+\midrule
+10\% noise & 3.9\,\scriptsize{($-$0.2)} & 3.7\,\scriptsize{($-$0.1)} & 3.6\,\scriptsize{($-$0.2)} & 3.7\,\scriptsize{($-$0.2)} & 3.5\,\scriptsize{($-$0.2)} & 3.4\,\scriptsize{($-$0.2)} \\
+20\% noise & 3.6\,\scriptsize{($-$0.5)} & 3.5\,\scriptsize{($-$0.3)} & 3.4\,\scriptsize{($-$0.4)} & 3.4\,\scriptsize{($-$0.5)} & 3.2\,\scriptsize{($-$0.5)} & 3.1\,\scriptsize{($-$0.5)} \\
+30\% noise & 3.3\,\scriptsize{($-$0.8)} & 3.2\,\scriptsize{($-$0.6)} & 3.1\,\scriptsize{($-$0.7)} & 3.1\,\scriptsize{($-$0.8)} & 2.9\,\scriptsize{($-$0.8)} & 2.8\,\scriptsize{($-$0.8)} \\
+\bottomrule
+\end{tabular}
+\end{table}

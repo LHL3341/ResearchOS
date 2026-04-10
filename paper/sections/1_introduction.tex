@@ -1,0 +1,136 @@
+\section{Introduction}
+\label{sec:intro}
+
+Modern machine learning research is characterized by rapid, combinatorial
+growth: advances in reasoning~\cite{wei2022chain, yao2023tree}, tool
+use~\cite{schick2023toolformer, qin2023toolllm}, and multi-modal
+integration~\cite{shen2023hugginggpt, lu2023chameleon} each introduce method
+components that practitioners must understand, compare, and selectively combine
+to push the state of the art. A single competitive submission to a top venue
+now routinely assembles half a dozen individually published techniques---chain-of-thought prompting layered with tree search, tool-augmented verification,
+self-consistency filtering, and domain-specific adaptations---into an
+integrated pipeline. As the space of available building blocks expands, the
+cognitive burden of \emph{method composition} becomes a bottleneck: researchers
+must simultaneously track technical compatibility, identify complementary
+strengths, avoid known failure interactions, and spot the gaps where novel
+contributions are needed. This complexity creates a compelling opportunity for
+computational support in the method design process itself.
+
+\paragraph{Limitations of existing approaches.}
+Recent work has explored two broad strategies for automating aspects of
+research. On one end, \emph{end-to-end idea generation} systems such as The AI
+Scientist~\cite{lu2024aiscientist} and AI Co-Scientist~\cite{gottifredi2024aicoscientist} prompt large language models to
+produce full research proposals or even complete papers. While impressive in
+scope, these systems treat idea generation as monolithic text completion,
+lacking explicit representations of method structure, compatibility
+constraints, or compositional reasoning. As a result, they frequently produce
+ideas that are either superficial recombinations of known concepts or
+internally inconsistent designs that overlook critical failure
+modes~\cite{huang2024mlrbench}. On the other end, \emph{knowledge retrieval}
+approaches---including semantic search engines, citation graphs, and concept
+extraction pipelines~\cite{baek2024researchagent, li2024chainofideas}---excel
+at surfacing relevant prior work but stop short of composing retrieved
+knowledge into actionable method designs. They organize \emph{what is known}
+without reasoning about \emph{what could be built}. Neither paradigm provides
+the structured, constraint-aware composition that effective method design
+demands.
+
+\paragraph{Key insight: methods as composable skill primitives.}
+Our work is motivated by a simple but powerful observation: the methodological
+contributions in research papers can be decomposed into \emph{research
+skills}---modular primitives with well-defined functional interfaces. Each
+skill specifies a goal (what problem it addresses), a mechanism (how it works),
+assumptions (when it applies), typed inputs and outputs, empirical performance
+gains, known failure modes, and explicit compatibility and conflict
+declarations with other skills. This structured decomposition is analogous to
+the shift from monolithic programs to modular software with typed APIs: once
+methods are represented as interface-bearing components, systematic composition
+becomes tractable. Skills can be organized into a graph whose edges encode
+functional relationships---prerequisite dependencies, enhancement
+opportunities, substitution alternatives, conflict constraints---enabling
+compositional search that respects the rich structure of methodological
+knowledge.
+
+This perspective draws conceptual inspiration from compositional frameworks in
+adjacent domains. In embodied AI, Voyager~\cite{wang2023voyager} builds a
+library of reusable behavioral skills for open-ended exploration. In tool-use
+research, systems such as ToolLLM~\cite{qin2023toolllm} and
+HuggingGPT~\cite{shen2023hugginggpt} compose API-bearing tools into
+multi-step pipelines. ResearchOS extends this compositional philosophy from
+executable tools and game behaviors to \emph{research methodology itself},
+treating the intellectual building blocks of scientific method design as
+first-class composable objects.
+
+\paragraph{Our approach: ResearchOS.}
+We introduce ResearchOS, a framework that operationalizes skill-based method
+composition through a five-stage pipeline (Figure~\ref{fig:pipeline}):
+%
+\begin{enumerate}[nosep,leftmargin=*]
+  \item \textbf{Skill Extraction.} Given a corpus of research papers, an LLM-based extraction module identifies and structures each methodological
+  contribution as a research skill with a standardized interface schema.
+  \item \textbf{Skill Graph Construction.} Extracted skills are organized into
+  a \emph{Research Skill Graph} with six typed relation edges---prerequisite,
+  enhances, substitutes, conflicts, composes, and refines---that encode
+  functional dependencies and opportunities among skills.
+  \item \textbf{Constraint-Aware Composition.} Given a research goal, a
+  composition engine performs goal decomposition, retrieves candidate skills
+  from the graph, assembles them into a directed acyclic graph (DAG)
+  respecting compatibility constraints, performs gap analysis to identify
+  missing capabilities, and proposes novel bridging skills to fill those gaps.
+  An iterative self-critique loop refines the design for internal consistency.
+  \item \textbf{Multi-Level Output Generation.} The composed design is
+  rendered at three levels of specificity: a \emph{Method Design Card}
+  (structured summary), a \emph{Research Proposal} (narrative with
+  motivation, hypotheses, and expected results), and an \emph{Executable
+  Experiment Plan} (concrete implementation steps, baselines, and evaluation
+  protocol).
+  \item \textbf{Validation.} Generated designs are assessed through a
+  multi-level evaluation protocol combining automated quality metrics,
+  pairwise Elo ranking by LLM judges, and future-grounded novelty analysis.
+\end{enumerate}
+
+\paragraph{Contributions.}
+This paper makes four principal contributions:
+\begin{enumerate}[nosep,leftmargin=*]
+  \item We introduce the \textbf{research skill schema}, a structured
+  representation of methodological primitives with typed functional interfaces
+  (goal, mechanism, assumptions, inputs/outputs, empirical gains, failure
+  modes, and compatibility/conflict declarations) that enables systematic
+  decomposition of published methods into composable units
+  (Section~\ref{sec:skill_schema}).
+
+  \item We propose the \textbf{Research Skill Graph}, a heterogeneous
+  knowledge graph with six relation types (prerequisite, enhances, substitutes,
+  conflicts, composes, refines) that captures the functional landscape of a
+  research domain and supports structured retrieval and constraint
+  checking (Section~\ref{sec:skill_graph}).
+
+  \item We develop a \textbf{constraint-aware composition engine} that
+  assembles skills into novel method designs through goal decomposition,
+  DAG construction with constraint satisfaction, and a gap-bridging mechanism
+  that identifies and fills missing capabilities with novel skill proposals,
+  followed by iterative self-critique
+  (Section~\ref{sec:composer}).
+
+  \item We design a \textbf{multi-level evaluation protocol} combining
+  pairwise Elo ranking, future-grounded novelty assessment via temporal
+  corpus splits, small-scale execution validation, and systematic judge
+  reliability analysis, providing rigorous and multi-faceted assessment of
+  generated research designs (Section~\ref{sec:experiments}).
+\end{enumerate}
+
+\paragraph{Results preview.}
+We instantiate ResearchOS on the domain of LLM reasoning, extracting over 200
+skills from more than 100 recent papers. In head-to-head comparisons,
+ResearchOS designs achieve significantly higher Elo ratings than those produced
+by direct prompting, retrieval-augmented generation (RAG), and flat skill list
+baselines. Future-grounded evaluation using temporal corpus splits
+demonstrates that ResearchOS-generated designs anticipate methodological
+directions that appear in subsequent real publications, confirming genuine
+novelty rather than mere recombination~\cite{du2024hindisight}. Ablation
+studies reveal that both the graph structure (versus unstructured skill lists)
+and the gap-bridging mechanism (versus composition without gap filling) are
+critical to design quality, with their removal causing substantial drops in
+novelty and feasibility scores. These results establish that structured,
+constraint-aware skill composition offers a principled and effective paradigm
+for automated research method design.

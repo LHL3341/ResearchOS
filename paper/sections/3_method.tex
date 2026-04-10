@@ -1,0 +1,165 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Overview}
+\label{sec:method_overview}
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\textwidth}{\centering\small\vspace{0.5em}
+\textbf{Paper Corpus} $\xrightarrow{\text{Compiler}}$ \textbf{Research Skills} $\xrightarrow{\text{Graph}}$ \textbf{Skill Graph} $\xrightarrow{\text{Composer}}$ \textbf{Method Design} $\xrightarrow{\text{Validator}}$ \textbf{Validated Output}\\[0.3em]
+{\footnotesize (Level A: Design Card $\to$ Level B: Proposal $\to$ Level C: Experiment Plan)}
+\vspace{0.5em}}}
+\caption{Overview of the ResearchOS pipeline. Papers are compiled into structured skills, organized in a relational graph, composed into novel method designs via constraint-aware search with gap-bridging, and validated along four dimensions before producing multi-level output.}
+\label{fig:pipeline}
+\end{figure}
+
+ResearchOS takes as input a natural-language research goal $g$ (e.g., ``design a method for few-shot cross-lingual named entity recognition that does not require parallel corpora'') and produces a structured method design that composes proven research techniques in novel, constraint-consistent ways. The pipeline, illustrated in Figure~\ref{fig:pipeline}, consists of four stages: (1)~a \emph{Paper-to-Skill Compiler} that extracts reusable method primitives from the literature and represents them in a structured schema; (2)~a \emph{Research Skill Graph} that organizes skills and their functional relationships; (3)~a \emph{Constraint-aware Skill Composer} that assembles skills into coherent method designs; and (4)~a \emph{Multi-dimensional Validator} that scores the resulting designs along axes of novelty, feasibility, expected impact, and risk. We describe each component in turn.
+
+\subsection{Research Skill Schema}
+\label{sec:skill_schema}
+
+The fundamental representational unit in ResearchOS is the \emph{research skill}---a self-contained method module extracted from the scientific literature. Formally, we define a skill as a tuple:
+\begin{equation}
+\label{eq:skill_tuple}
+s = (\textit{id},\; \textit{name},\; \textit{goal},\; \textit{mech},\; \textit{assum},\; \textit{in},\; \textit{out},\; \ell,\; \textit{res},\; \textit{gains},\; \textit{fail},\; \textit{compat},\; \textit{confl},\; \textit{src},\; \textit{tags})
+\end{equation}
+where each field is defined as follows:
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item \textbf{id}: A unique identifier (hash of name, mechanism, and source).
+    \item \textbf{name}: A concise human-readable label (e.g., ``label-projection alignment'').
+    \item \textbf{goal}: The functional objective the skill achieves, expressed as a natural-language statement (e.g., ``transfer entity labels across languages without parallel data'').
+    \item \textbf{mech} (mechanism): A precise description of \emph{how} the skill achieves its goal---the algorithmic or procedural core.
+    \item \textbf{assum} (assumptions): Conditions that must hold for the skill to be validly applied (e.g., ``source and target languages share a common subword vocabulary'').
+    \item \textbf{in}, \textbf{out} (inputs, outputs): Typed interfaces specifying what the skill consumes and produces, enabling composition.
+    \item $\boldsymbol{\ell}$ \textbf{(level)}: A granularity indicator from the set $\{\texttt{atomic},\; \texttt{module},\; \texttt{pipeline}\}$, supporting multi-resolution reasoning.
+    \item \textbf{res} (resources): Computational and data requirements (e.g., GPU hours, dataset scale).
+    \item \textbf{gains}: The reported or expected performance improvements, with conditions.
+    \item \textbf{fail} (failure modes): Known conditions under which the skill degrades or fails, extracted from ablations and discussion sections.
+    \item \textbf{compat} (compatibility): Explicit notes on which other skills or settings this skill works well with.
+    \item \textbf{confl} (conflicts): Skills or conditions that are incompatible with this skill.
+    \item \textbf{src} (sources): Provenance---the paper(s) and section(s) from which the skill was extracted.
+    \item \textbf{tags}: Categorical labels for retrieval (e.g., \texttt{data-augmentation}, \texttt{cross-lingual}, \texttt{regularization}).
+\end{itemize}
+
+\paragraph{Granularity control principle.} A natural question is what constitutes a single skill versus a collection of skills. We adopt the following criterion: \emph{a skill corresponds to a method module that can be independently described, independently replaced, and has well-defined interfaces.} An atomic skill is one that cannot be further decomposed without losing its semantic coherence (e.g., ``dropout regularization''). A module-level skill composes several atomic skills into a reusable unit (e.g., ``multi-head cross-attention with relative position bias''). A pipeline-level skill describes an end-to-end method assembled from modules. This hierarchy enables the composer to reason at the appropriate level of abstraction for a given design problem.
+
+\subsection{Paper-to-Skill Compiler}
+\label{sec:compiler}
+
+The Paper-to-Skill Compiler transforms unstructured scientific papers into structured skill representations. It operates in five stages:
+
+\paragraph{Step 1: Section parsing.} We use GROBID and the S2ORC pipeline to parse PDF papers into structured sections, extracting the title, abstract, method, experiments, ablation, and discussion segments. This structured input enables targeted extraction from the sections most relevant to each schema field.
+
+\paragraph{Step 2: Candidate skill extraction.} Given the parsed method section, the compiler performs hierarchical decomposition. An LLM is prompted to identify the top-level method architecture and then recursively decompose it into constituent modules. At each level of decomposition, the LLM determines whether a component satisfies the granularity control principle; if so, it is emitted as a candidate skill. This process typically yields 3--8 candidate skills per paper, depending on method complexity.
+
+\paragraph{Step 3: Schema filling with cross-validation.} For each candidate skill, the compiler populates the full schema tuple (Eq.~\ref{eq:skill_tuple}) by drawing on multiple paper sections. The \emph{mechanism} and \emph{assumptions} fields are primarily extracted from the method section; \emph{gains} and \emph{failure modes} are sourced from experiments and ablation studies; \emph{compatibility} and \emph{conflict} information is drawn from the discussion and related work. Critically, each extracted field is cross-validated against other sections: for instance, an assumption stated in the method section is checked against experimental conditions to verify consistency.
+
+\paragraph{Step 4: Deduplication \& normalization.} Skills extracted from different papers may describe the same underlying technique. We compute pairwise similarity using embeddings of the \emph{mechanism} field and merge candidates whose similarity exceeds a threshold $\tau_{\text{dedup}} = 0.92$, retaining the richest schema (the one with the most non-empty fields and the most detailed entries). Terminology is normalized to canonical forms via an evolving controlled vocabulary.
+
+\paragraph{Step 5: Quality control.} Each extracted skill undergoes a \emph{reconstructability test}: a separate LLM instance, given only the skill schema (without access to the source paper), is asked to produce a reimplementation sketch. If the sketch is judged to be substantively incomplete---that is, a competent researcher could not reimplement the method from the schema alone---the skill is flagged for revision or rejection. This test enforces a minimum level of self-containedness and precision.
+
+\subsection{Research Skill Graph}
+\label{sec:skill_graph}
+
+Skills extracted from the literature are organized into a \emph{Research Skill Graph} $\mathcal{G} = (\mathcal{V}, \mathcal{E})$, where nodes $\mathcal{V}$ correspond to skills and edges $\mathcal{E}$ encode typed functional relationships.
+
+\paragraph{Nodes.} Each node $v \in \mathcal{V}$ stores the full skill schema (Eq.~\ref{eq:skill_tuple}) as node attributes, enabling rich querying and reasoning over the graph.
+
+\paragraph{Edge types.} We define six edge types, each carrying distinct semantics for composition:
+\begin{equation}
+\label{eq:edge_types}
+\mathcal{T} = \{\textsc{Prerequisite},\; \textsc{Enhances},\; \textsc{Substitutes},\; \textsc{Conflicts},\; \textsc{Composes},\; \textsc{Refines}\}
+\end{equation}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+    \item $\textsc{Prerequisite}(s_i, s_j)$: Skill $s_j$ requires skill $s_i$ to be applied first (a partial ordering constraint).
+    \item $\textsc{Enhances}(s_i, s_j)$: Skill $s_i$ improves the performance of $s_j$ when applied together.
+    \item $\textsc{Substitutes}(s_i, s_j)$: Skills $s_i$ and $s_j$ address the same sub-goal and can replace each other.
+    \item $\textsc{Conflicts}(s_i, s_j)$: Skills $s_i$ and $s_j$ have incompatible assumptions or produce interfering effects.
+    \item $\textsc{Composes}(s_i, s_j)$: Skills $s_i$ and $s_j$ are designed to be used together as parts of a larger module.
+    \item $\textsc{Refines}(s_i, s_j)$: Skill $s_j$ is a more specific or improved variant of $s_i$.
+\end{itemize}
+
+\paragraph{Edge construction.} Edges are constructed through three complementary mechanisms. First, \emph{explicit extraction}: when a paper directly states relationships between techniques (e.g., ``our approach builds on [X] and replaces the attention mechanism of [Y]''), the compiler extracts the corresponding edges. Second, \emph{LLM inference}: given pairs of skill schemas, an LLM is prompted to assess whether each edge type holds, providing a confidence score $c \in [0,1]$; edges with $c \geq 0.7$ are added. Third, \emph{co-occurrence evidence}: skills that frequently appear together in the same papers receive \textsc{Composes} edges, while skills that are never combined despite addressing similar goals receive candidate \textsc{Conflicts} edges for LLM verification.
+
+\paragraph{Incremental maintenance.} As new papers are compiled, the graph is updated incrementally. New skills are matched against existing nodes for potential deduplication, and edges are constructed between new and existing nodes. Periodically, a global consistency pass identifies and resolves contradictions (e.g., transitive conflicts, cycles in prerequisite edges).
+
+\subsection{Constraint-aware Skill Composer}
+\label{sec:composer}
+
+The Constraint-aware Skill Composer is the central reasoning engine of ResearchOS. Given a research goal $g$, it assembles a novel, coherent method design from skills in the graph. The composition process unfolds in six phases.
+
+\paragraph{Phase 1: Goal decomposition.}
+The research goal $g$ is decomposed into a set of functional sub-goals:
+\begin{equation}
+\label{eq:goal_decomp}
+g \;\longrightarrow\; [g_1, g_2, \ldots, g_k]
+\end{equation}
+where each $g_i$ describes a specific capability that the final method must provide. This decomposition is performed by an LLM, guided by prompts that encourage functional (rather than topical) partitioning. For example, a goal about few-shot cross-lingual NER might decompose into sub-goals for representation alignment, label transfer, and low-resource adaptation.
+
+\paragraph{Phase 2: Skill retrieval.}
+For each sub-goal $g_i$, we retrieve a candidate set $\mathcal{C}_i \subset \mathcal{V}$ of relevant skills using a hybrid retrieval strategy: (a)~embedding similarity between $g_i$ and skill \emph{goal} fields, (b)~tag matching, and (c)~graph neighborhood expansion from initial matches (following \textsc{Enhances} and \textsc{Composes} edges up to depth 2). The union of these retrieval signals, ranked by a weighted combination, yields a candidate pool per sub-goal.
+
+\paragraph{Phase 3: Constraint-aware DAG construction.}
+We formulate the composition task as a constraint satisfaction problem. Let $\mathbf{x} \in \{0,1\}^{|\mathcal{V}|}$ be a binary selection vector indicating which skills are included in the design. The composer solves:
+\begin{equation}
+\label{eq:csp}
+\max_{\mathbf{x}} \;\; \sum_{i} \textit{relevance}(s_i, g) \cdot x_i + \lambda \sum_{(i,j) \in \mathcal{E}_{\textsc{Enh}}} x_i \, x_j
+\end{equation}
+subject to hard constraints:
+\begin{align}
+\label{eq:constraints}
+& x_j = 1 \;\Rightarrow\; x_i = 1 \quad \forall\; (s_i, s_j) \in \mathcal{E}_{\textsc{Pre}} \quad \text{(prerequisite satisfaction)} \\
+& x_i + x_j \leq 1 \quad \forall\; (s_i, s_j) \in \mathcal{E}_{\textsc{Con}} \quad \text{(conflict avoidance)} \\
+& \sum_{i} \textit{res}(s_i) \cdot x_i \leq B \quad \text{(budget constraint)}
+\end{align}
+and soft preferences for simplicity (penalizing $\|\mathbf{x}\|_1$) and synergy (rewarding known \textsc{Enhances} pairs). In practice, because the candidate pool per sub-goal is small (typically 5--15 skills), this optimization is solved via beam search over feasible subsets rather than integer linear programming. The selected skills are arranged into a directed acyclic graph (DAG) ordered by \textsc{Prerequisite} edges, with parallel branches for independent sub-goals.
+
+\paragraph{Phase 4: Gap analysis \& novel bridging.}
+This phase represents a \textbf{key innovation} of ResearchOS. After constructing the initial DAG, the composer analyzes it for \emph{functional gaps}---sub-goals that are not fully addressed by existing skills, or interface mismatches between adjacent skills in the DAG. Formally, for each pair of connected skills $(s_i, s_j)$ in the DAG, we check whether $\textit{out}(s_i)$ is type-compatible with $\textit{in}(s_j)$. When a gap is detected, the composer generates a \emph{bridging mechanism}: a novel skill schema $s_{\text{bridge}}$ whose goal is to resolve the gap, whose inputs match $\textit{out}(s_i)$, and whose outputs match $\textit{in}(s_j)$. These bridging skills---synthesized rather than retrieved---are a primary source of methodological novelty in the system. The composer is specifically prompted to draw on analogies from distant regions of the skill graph, encouraging cross-domain transfer.
+
+\paragraph{Phase 5: Design synthesis.}
+The complete DAG (including any bridging skills) is synthesized into a \emph{Method Design Card}: a structured document that specifies the overall method architecture, the role of each skill, inter-skill data flow, key design decisions, and expected behavior. The synthesis step ensures that the assembled skills form a coherent narrative, not merely a bag of techniques.
+
+\paragraph{Phase 6: Self-critique \& refinement.}
+The initial design undergoes 2--3 iterations of self-critique, drawing on principles from chain-of-thought reasoning~\cite{wei2022chain} and self-consistency~\cite{wang2023selfconsistency}. In each iteration, a critic LLM evaluates the design for internal consistency, assumption violations, and overlooked failure modes. Identified issues are addressed by substituting skills (via \textsc{Substitutes} edges), adding compensatory skills, or revising bridging mechanisms.
+
+\paragraph{Controlling combinatorial explosion.}
+The space of possible skill compositions is combinatorially large. We employ three strategies to maintain tractability: (1)~\emph{beam search} with a beam width of $B_w = 5$ over candidate DAGs, pruning low-scoring partial compositions early; (2)~\emph{graph pruning}, restricting retrieval to skills within a bounded graph distance from high-relevance seed skills; and (3)~\emph{budget filtering}, immediately discarding compositions that exceed resource constraints.
+
+\paragraph{Avoiding trivial recombination.}
+Not all compositions are interesting. To ensure that the composer produces genuinely novel designs rather than rediscovering existing methods, we apply three filters: (i)~an \emph{existing composition check} that compares the proposed DAG against known pipeline-level skills in the graph; (ii)~a \emph{novelty-aware gap requirement} mandating that at least one bridging skill or unconventional substitution be present; and (iii)~a \emph{surprise score} defined as:
+\begin{equation}
+\label{eq:surprise}
+\textit{surprise}(\mathcal{D}) = \frac{1}{|\mathcal{D}|^2} \sum_{(s_i, s_j) \in \mathcal{D}} d_{\mathcal{G}}(s_i, s_j)
+\end{equation}
+where $d_{\mathcal{G}}(s_i, s_j)$ is the shortest-path distance between skills $s_i$ and $s_j$ in the skill graph, and the sum ranges over all pairs in the design $\mathcal{D}$. Designs with higher surprise scores combine skills from more distant parts of the graph, suggesting cross-domain innovation. Designs below a minimum surprise threshold $\tau_{\text{surp}}$ are penalized.
+
+\subsection{Multi-dimensional Validator}
+\label{sec:validator}
+
+Before presenting a method design to the user, ResearchOS evaluates it along four dimensions:
+
+\begin{enumerate}[leftmargin=1.5em,itemsep=2pt]
+    \item \textbf{Novelty.} We compute the maximum cosine similarity between the design's embedding and the embeddings of all existing pipeline-level skills in $\mathcal{G}$. Additionally, we retrieve the top-$k$ most similar published methods and present them alongside the design for explicit differentiation. A design is flagged as potentially non-novel if its similarity to any existing method exceeds $\tau_{\text{nov}} = 0.85$.
+
+    \item \textbf{Feasibility.} We verify that all prerequisite constraints are satisfied in the DAG, that the combined resource requirements fall within specified budgets, and that no pair of selected skills has a \textsc{Conflicts} edge. Assumption consistency is checked by ensuring that the assumptions of all selected skills are mutually satisfiable.
+
+    \item \textbf{Expected impact.} We estimate potential impact by aggregating the reported \emph{gains} of constituent skills, discounted by a composition uncertainty factor $\gamma < 1$ that accounts for the empirical observation that gains from individual techniques are rarely fully additive.
+
+    \item \textbf{Risk assessment.} We compile the \emph{failure modes} of all selected skills and analyze their interaction. A risk score is computed based on the number of unmitigated failure modes and the severity of potential cascading failures (where the failure of one skill triggers the failure of a dependent skill).
+\end{enumerate}
+
+Each dimension produces a score in $[0,1]$, and the four scores are presented as a radar chart accompanying the design, giving users an at-a-glance quality profile.
+
+\subsection{Three-level Output}
+\label{sec:output_levels}
+
+ResearchOS produces output at three levels of detail, each building upon the previous:
+
+\textbf{Level A --- Method Design Card.} A structured summary comprising the method name, the skill DAG with node and edge annotations, a one-paragraph description of the overall approach, and the four validation scores. This level is designed for rapid browsing and comparison of multiple candidate designs.
+
+\textbf{Level B --- Research Proposal.} An expanded document that elaborates the Design Card into a full method description, including motivation, detailed algorithm specification, discussion of design alternatives considered (with rationale for the chosen configuration), and a concrete evaluation plan with suggested baselines, datasets, and metrics.
+
+\textbf{Level C --- Executable Plan.} A fine-grained implementation roadmap that maps each skill in the DAG to specific implementation steps, pseudocode or code templates, required libraries and infrastructure, and a suggested timeline. Level~C is intended to minimize the gap between method design and experimental execution, bridging the ideation--implementation divide that limits the practical utility of many automated research systems.

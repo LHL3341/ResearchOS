@@ -1,0 +1,240 @@
+\section{Research Skill Schema Specification}
+\label{app:schema}
+
+Table~\ref{tab:skill_schema} presents the complete field specification for a research skill primitive. Every extracted skill must populate all required fields; optional fields are marked accordingly.
+
+\begin{table}[h]
+\centering
+\caption{Research Skill Schema. All fields are required unless marked optional.}
+\label{tab:skill_schema}
+\small
+\begin{tabular}{@{}lp{5cm}p{5cm}@{}}
+\toprule
+\textbf{Field} & \textbf{Type \& Constraints} & \textbf{Example (Chain-of-Thought)} \\
+\midrule
+\texttt{id} & String, unique & \texttt{skill\_cot\_001} \\
+\texttt{name} & String, $\leq$10 words & Chain-of-Thought Prompting \\
+\texttt{goal} & String, 1--2 sentences & Improve LLM accuracy on complex reasoning tasks \\
+\texttt{mechanism} & String, $\leq$3 sentences, must describe \emph{operations} not outcomes & Insert intermediate reasoning steps in prompts to guide step-by-step derivation \\
+\texttt{assumptions} & List[String] & Model $\geq$60B params; task is multi-step decomposable \\
+\texttt{inputs} & List[String], typed & Prompt template, exemplar QA pairs, task query \\
+\texttt{outputs} & List[String], typed & Model output with reasoning chain \\
+\texttt{level} & Enum: \{training, inference, data, architecture, prompting\} & prompting \\
+\texttt{resources} & String & No training; inference tokens $\times$3--5 \\
+\texttt{empirical\_gains} & List[String], with conditions & GSM8K: 58\%$\to$75\% (PaLM 540B) \\
+\texttt{failure\_modes} & List[String] & Unfaithful chains; small models show no gain \\
+\texttt{compatibility} & List[skill\_id] & self-consistency, verification \\
+\texttt{conflict} & List[skill\_id] & direct-answer prompting \\
+\texttt{source\_papers} & List[String] & \cite{wei2022chain} \\
+\texttt{tags} & List[String], hierarchical & [reasoning, prompting, inference-time] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Granularity Principle.}
+A valid skill must satisfy three criteria: (1)~it can be described independently of its source paper's specific experimental context; (2)~it can be replaced by an alternative skill serving the same sub-goal; and (3)~it has well-defined inputs and outputs that enable composition with other skills. Operationally, if one could write a self-contained paragraph in a new paper's method section describing the technique, it qualifies as a skill.
+
+\section{Skill Extraction Prompt Template}
+\label{app:extraction_prompt}
+
+The following is the core prompt used in the Paper-to-Skill Compiler (Section~\ref{sec:compiler}):
+
+\begin{quote}
+\small
+\texttt{You are a research method analyst. Given the following paper sections, extract all distinct research skills (method primitives) that represent independently reusable techniques.}
+
+\texttt{For each skill, fill in ALL fields of the following schema:}
+
+\texttt{- name: (short, $\leq$10 words)}\\
+\texttt{- goal: (what problem does this technique solve?)}\\
+\texttt{- mechanism: (HOW does it work? Describe the operation, not the outcome. Must be specific enough that someone could reimplement it.)}\\
+\texttt{- assumptions: (what must be true for this to work?)}\\
+\texttt{- inputs: (what does it take as input? Be specific about types.)}\\
+\texttt{- outputs: (what does it produce?)}\\
+\texttt{- level: (training-time / inference-time / data / architecture / prompting)}\\
+\texttt{- required\_resources: (compute, data, or other requirements)}\\
+\texttt{- empirical\_gains: (quantitative results WITH conditions)}\\
+\texttt{- failure\_modes: (when does this NOT work?)}\\
+\texttt{- compatibility: (what other methods work well with this?)}\\
+\texttt{- conflict: (what methods conflict with this?)}
+
+\texttt{IMPORTANT: The mechanism field must describe OPERATIONS, not outcomes. BAD: ``We propose a novel method that improves reasoning.'' GOOD: ``Insert step-by-step reasoning demonstrations before the query, each showing intermediate derivation steps.''}
+
+\texttt{Paper sections:}\\
+\texttt{[INTRODUCTION]: \{intro\}}\\
+\texttt{[METHOD]: \{method\}}\\
+\texttt{[EXPERIMENTS]: \{experiments\}}\\
+\texttt{[RELATED WORK]: \{related\_work\}}\\
+\texttt{[LIMITATIONS]: \{limitations\}}
+\end{quote}
+
+\section{Edge Inference Prompt Template}
+\label{app:edge_prompt}
+
+\begin{quote}
+\small
+\texttt{Given two research skills, determine their relationship(s). Choose from:}
+
+\texttt{- PREREQUISITE(A, B): Using B requires A to be in place first}\\
+\texttt{- ENHANCES(A, B): A improves B's effectiveness}\\
+\texttt{- SUBSTITUTES(A, B): A and B solve the same sub-problem, interchangeable}\\
+\texttt{- CONFLICTS(A, B): A and B cannot be used together}\\
+\texttt{- COMPOSES(A, B): A and B combine to form a higher-level method}\\
+\texttt{- REFINES(A, B): B is an improved version of A}\\
+\texttt{- NONE: No significant relationship}
+
+\texttt{For each identified relationship, provide:}\\
+\texttt{- type: the relationship type}\\
+\texttt{- confidence: 0.0--1.0}\\
+\texttt{- evidence: brief justification}
+
+\texttt{Skill A: \{skill\_a\_schema\}}\\
+\texttt{Skill B: \{skill\_b\_schema\}}
+\end{quote}
+
+\section{Evaluation Rubrics}
+\label{app:rubrics}
+
+We provide structured rubrics for each evaluation dimension. Each rubric is provided to the LLM judge along with the design being evaluated.
+
+\subsection{Novelty Rubric}
+\begin{itemize}[leftmargin=*]
+\item \textbf{1 -- Duplicate:} The proposed method is essentially identical to an existing published method. No new combination or mechanism.
+\item \textbf{2 -- Minor Variation:} The method makes superficial changes to an existing approach (e.g., different hyperparameters, trivial reordering of known steps).
+\item \textbf{3 -- Non-trivial Combination:} The method combines existing techniques in a way that has not been explicitly explored, but the combination is relatively straightforward.
+\item \textbf{4 -- Novel Composition:} The method includes a genuinely new bridging mechanism or an unexpected cross-domain combination. The composition produces emergent properties beyond the sum of its parts.
+\item \textbf{5 -- Highly Novel:} The method introduces a fundamentally new mechanism or a paradigm-shifting combination that opens new research directions.
+\end{itemize}
+
+\subsection{Feasibility Rubric}
+\begin{itemize}[leftmargin=*]
+\item \textbf{1 -- Infeasible:} Critical prerequisites are unmet, or required resources are clearly unavailable. Contains fundamental technical contradictions.
+\item \textbf{2 -- Major Barriers:} Significant implementation challenges exist with no clear solution path. May require breakthroughs in other areas first.
+\item \textbf{3 -- Feasible with Effort:} Implementable but requires substantial engineering effort or moderate resources. Some open questions remain.
+\item \textbf{4 -- Readily Feasible:} Clear implementation path with existing tools and moderate resources. Minor uncertainties only.
+\item \textbf{5 -- Immediately Executable:} Can be implemented with existing code, data, and compute in days. All components are well-understood.
+\end{itemize}
+
+\subsection{Significance Rubric}
+\begin{itemize}[leftmargin=*]
+\item \textbf{1 -- Negligible:} Expected improvement is marginal ($<$1\%) or addresses an unimportant problem.
+\item \textbf{2 -- Incremental:} Expected improvement is modest (1--5\%) on established benchmarks for a known problem.
+\item \textbf{3 -- Moderate:} Expected improvement is substantial (5--15\%) or addresses a recognized gap in the field.
+\item \textbf{4 -- Significant:} Expected to meaningfully advance the state-of-the-art or establish a new capability.
+\item \textbf{5 -- Breakthrough:} If successful, would fundamentally change how the community approaches the problem.
+\end{itemize}
+
+\subsection{Technical Quality Rubric}
+\begin{itemize}[leftmargin=*]
+\item \textbf{1:} Contains logical contradictions or fundamentally flawed reasoning.
+\item \textbf{2:} Reasoning has gaps; some assumptions are unjustified or inconsistent.
+\item \textbf{3:} Reasoning is mostly sound but has minor issues; assumptions are reasonable.
+\item \textbf{4:} Technically rigorous with well-justified assumptions and clear logic.
+\item \textbf{5:} Exceptionally rigorous; considers edge cases, provides theoretical grounding.
+\end{itemize}
+
+\section{Pairwise Comparison Prompt}
+\label{app:pairwise_prompt}
+
+\begin{quote}
+\small
+\texttt{You are evaluating two research method designs on \{METRIC\}. Read both designs carefully, then determine which is better on this specific dimension.}
+
+\texttt{Rubric for \{METRIC\}:}\\
+\texttt{\{RUBRIC\}}
+
+\texttt{Design A:}\\
+\texttt{\{DESIGN\_A\}}
+
+\texttt{Design B:}\\
+\texttt{\{DESIGN\_B\}}
+
+\texttt{First, analyze each design on the \{METRIC\} dimension in 2--3 sentences. Then state your verdict: ``A is better'', ``B is better'', or ``Tie''. Provide a brief justification for your choice.}
+
+\texttt{Output format:}\\
+\texttt{Analysis of A: ...}\\
+\texttt{Analysis of B: ...}\\
+\texttt{Verdict: [A is better / B is better / Tie]}\\
+\texttt{Justification: ...}
+\end{quote}
+
+\section{Research Goals Used in Evaluation}
+\label{app:goals}
+
+Table~\ref{tab:goals} lists the 20 research goals used in our experiments.
+
+\begin{table}[h]
+\centering
+\caption{Research goals for evaluation. Goals 1--10 are manually designed; Goals 11--20 are extracted from paper future work sections.}
+\label{tab:goals}
+\small
+\begin{tabular}{@{}clp{9cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Type} & \textbf{Research Goal} \\
+\midrule
+G1 & Manual & Improve faithfulness of LLM reasoning chains in multi-step mathematical problems \\
+G2 & Manual & Reduce inference latency of chain-of-thought reasoning without sacrificing accuracy \\
+G3 & Manual & Enable reliable reasoning in LLMs with fewer than 10B parameters \\
+G4 & Manual & Improve LLM performance on multi-hop factual reasoning over long contexts \\
+G5 & Manual & Design self-correcting reasoning that detects and fixes its own errors \\
+G6 & Manual & Combine symbolic and neural reasoning for improved compositionality \\
+G7 & Manual & Improve reasoning robustness to adversarial or misleading premises \\
+G8 & Manual & Enable efficient test-time compute scaling for reasoning tasks \\
+G9 & Manual & Transfer reasoning capabilities across domains without domain-specific training \\
+G10 & Manual & Improve calibration of LLM confidence in reasoning outputs \\
+G11 & Extracted & Extend step-level verification to natural language reasoning beyond math \\
+G12 & Extracted & Develop reasoning methods that handle ambiguous or under-specified problems \\
+G13 & Extracted & Combine retrieval-augmented generation with structured reasoning \\
+G14 & Extracted & Reduce hallucination in reasoning chains through grounding mechanisms \\
+G15 & Extracted & Develop adaptive reasoning depth based on problem complexity \\
+G16 & Extracted & Improve multi-agent debate for complex reasoning with disagreement resolution \\
+G17 & Extracted & Design curriculum learning strategies for reasoning skill acquisition \\
+G18 & Extracted & Combine process reward models with outcome reward models for reasoning \\
+G19 & Extracted & Enable reasoning with noisy or incomplete evidence \\
+G20 & Extracted & Develop methods for compositional generalization in reasoning \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Proposal Completeness Checklist}
+\label{app:checklist}
+
+The 12-item checklist used to evaluate Level~B proposals:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Hypothesis:} A clear, falsifiable hypothesis is stated.
+\item \textbf{Independent Variables:} All manipulated variables are specified.
+\item \textbf{Dependent Variables:} All measured outcomes are defined.
+\item \textbf{Controls:} Controlled variables and control conditions are listed.
+\item \textbf{Metrics:} Quantitative evaluation metrics are specified.
+\item \textbf{Datasets:} Specific datasets/benchmarks are named with split information.
+\item \textbf{Baselines:} Comparison methods are identified.
+\item \textbf{Ablations:} Ablation conditions are designed to isolate contributions.
+\item \textbf{Implementation Notes:} Key implementation details are provided.
+\item \textbf{Resource Estimate:} Compute, data, and time requirements are estimated.
+\item \textbf{Risk Analysis:} Potential failure modes and mitigation strategies are discussed.
+\item \textbf{Expected Outcomes:} Predicted results and interpretation of negative results are provided.
+\end{enumerate}
+
+\section{Additional Design Examples}
+\label{app:examples}
+
+We present two additional generated designs to illustrate the range of compositions produced by \textsc{ResearchOS}.
+
+\paragraph{Example 1: Adaptive-Depth Verified Reasoning.}
+\begin{itemize}[leftmargin=*]
+\item \textbf{Goal:} G15 --- Develop adaptive reasoning depth based on problem complexity.
+\item \textbf{Selected Skills:} Complexity classifier, early-exit mechanism, step-level verifier, confidence calibrator.
+\item \textbf{Novel Bridging:} A \emph{complexity-conditional routing} mechanism that uses a lightweight classifier to predict problem difficulty, then allocates reasoning depth (number of CoT steps) proportionally. The step-level verifier provides feedback to the classifier, creating a calibration loop.
+\item \textbf{Expected Gain:} 40--60\% latency reduction on easy problems with $<$2\% accuracy drop; maintained accuracy on hard problems.
+\item \textbf{Key Risk:} Misclassification of hard problems as easy leads to truncated reasoning and accuracy loss.
+\end{itemize}
+
+\paragraph{Example 2: Retrieval-Grounded Debate.}
+\begin{itemize}[leftmargin=*]
+\item \textbf{Goal:} G16 --- Improve multi-agent debate with disagreement resolution.
+\item \textbf{Selected Skills:} Multi-agent debate, evidence retrieval, argument scoring, consensus mechanism.
+\item \textbf{Novel Bridging:} When debate agents disagree, trigger targeted retrieval for the disputed claim. Each agent must ground its argument in retrieved evidence, and a \emph{evidence-weighted voting} mechanism resolves disputes by weighting votes by the relevance and reliability of cited evidence.
+\item \textbf{Expected Gain:} Reduced debate rounds (3$\to$2 average); improved factual accuracy of conclusions by 8--12\%.
+\item \textbf{Key Risk:} Retrieval corpus may not contain evidence for novel reasoning steps, causing deadlock.
+\end{itemize}

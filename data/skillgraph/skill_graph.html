@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ResearchOS Skill Knowledge Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0a0a0a; color: #e0e0e0; }
+#header { padding: 16px 24px; background: #111; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+#header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+#stats { font-size: 13px; color: #888; }
+#graph { width: 100vw; height: calc(100vh - 56px); }
+#tooltip { position: absolute; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 10px 14px; font-size: 12px; pointer-events: none; display: none; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+#tooltip .name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+#tooltip .goal { color: #aaa; margin-bottom: 4px; }
+#tooltip .meta { color: #666; font-size: 11px; }
+#legend { position: absolute; bottom: 20px; left: 20px; background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px; font-size: 11px; }
+#legend .item { display: flex; align-items: center; margin: 3px 0; }
+#legend .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+#legend .line { width: 20px; height: 2px; margin-right: 6px; }
+svg text { fill: #ccc; font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>ResearchOS Skill Knowledge Graph</h1>
+  <div id="stats">15 skills &middot; 23 relations &middot; 12 papers</div>
+</div>
+<div id="graph"></div>
+<div id="tooltip"></div>
+<div id="legend">
+  <b>Node (skill level)</b>
+  <div class="item"><div class="dot" style="background:#4fc3f7"></div>prompting</div>
+  <div class="item"><div class="dot" style="background:#81c784"></div>inference-time</div>
+  <div class="item"><div class="dot" style="background:#ff8a65"></div>training-time</div>
+  <div class="item"><div class="dot" style="background:#ce93d8"></div>architecture</div>
+  <div class="item"><div class="dot" style="background:#fff176"></div>data</div>
+  <br><b>Edge (relation)</b>
+  <div class="item"><div class="line" style="background:#4caf50"></div>ENHANCES</div>
+  <div class="item"><div class="line" style="background:#2196f3"></div>COMPOSES</div>
+  <div class="item"><div class="line" style="background:#ff9800"></div>PREREQUISITE</div>
+  <div class="item"><div class="line" style="background:#f44336"></div>CONFLICTS</div>
+  <div class="item"><div class="line" style="background:#9c27b0"></div>SUBSTITUTES</div>
+  <div class="item"><div class="line" style="background:#607d8b"></div>REFINES</div>
+</div>
+<script>
+const nodes = [{"id": "cot", "name": "Chain-of-Thought Prompting", "goal": "Improve LLM multi-step reasoning by eliciting intermediate steps", "level": "prompting", "tags": ["reasoning", "prompting", "few-shot"], "papers": 2}, {"id": "zerocot", "name": "Zero-shot CoT", "goal": "Enable chain-of-thought reasoning without demonstrations", "level": "prompting", "tags": ["reasoning", "prompting", "zero-shot"], "papers": 1}, {"id": "sc", "name": "Self-Consistency", "goal": "Improve reasoning reliability via majority voting over multiple chains", "level": "inference-time", "tags": ["reasoning", "ensemble", "voting"], "papers": 1}, {"id": "tot", "name": "Tree of Thoughts", "goal": "Enable deliberate planning via tree-structured reasoning exploration", "level": "inference-time", "tags": ["reasoning", "search", "planning"], "papers": 1}, {"id": "got", "name": "Graph of Thoughts", "goal": "Enable non-linear reasoning via graph-structured thought exploration", "level": "inference-time", "tags": ["reasoning", "search", "graph"], "papers": 1}, {"id": "verification", "name": "Step-level Verification", "goal": "Detect and correct errors in intermediate reasoning steps", "level": "inference-time", "tags": ["reasoning", "verification", "reward-model"], "papers": 1}, {"id": "reflexion", "name": "Reflexion", "goal": "Enable LLM self-improvement through verbal self-reflection", "level": "inference-time", "tags": ["reasoning", "self-improvement", "reflection"], "papers": 1}, {"id": "selfrefine", "name": "Self-Refine", "goal": "Iteratively improve LLM outputs via self-feedback", "level": "inference-time", "tags": ["reasoning", "self-improvement", "refinement"], "papers": 1}, {"id": "pal", "name": "Program-Aided Language Models", "goal": "Offload computation to code execution for faithful reasoning", "level": "prompting", "tags": ["reasoning", "tool-use", "code-generation"], "papers": 1}, {"id": "pot", "name": "Program of Thoughts", "goal": "Disentangle computation from reasoning via code", "level": "prompting", "tags": ["reasoning", "tool-use", "code-generation"], "papers": 1}, {"id": "retrieval", "name": "Evidence-Grounded Retrieval for Reasoning", "goal": "Ground reasoning steps in retrieved external evidence", "level": "inference-time", "tags": ["reasoning", "retrieval", "grounding"], "papers": 1}, {"id": "tool_use", "name": "Tool-Augmented Reasoning", "goal": "Extend LLM capabilities by calling external tools during reasoning", "level": "prompting", "tags": ["reasoning", "tool-use", "augmentation"], "papers": 1}, {"id": "direct_answer", "name": "Direct Answer Prompting", "goal": "Obtain answer directly without intermediate reasoning", "level": "prompting", "tags": ["baseline", "prompting", "direct"], "papers": 0}, {"id": "debate", "name": "Multi-Agent Debate", "goal": "Improve reasoning quality through adversarial multi-agent discussion", "level": "inference-time", "tags": ["reasoning", "multi-agent", "debate"], "papers": 0}, {"id": "prm", "name": "Process Reward Model", "goal": "Provide dense step-level feedback for reasoning chain generation", "level": "training-time", "tags": ["reasoning", "reward-model", "process-supervision"], "papers": 1}];
+const links = [{"source": "zerocot", "target": "cot", "type": "REFINES", "confidence": 0.9}, {"source": "got", "target": "tot", "type": "REFINES", "confidence": 0.85}, {"source": "pot", "target": "pal", "type": "REFINES", "confidence": 0.8}, {"source": "sc", "target": "cot", "type": "ENHANCES", "confidence": 0.95}, {"source": "verification", "target": "cot", "type": "ENHANCES", "confidence": 0.9}, {"source": "retrieval", "target": "cot", "type": "ENHANCES", "confidence": 0.8}, {"source": "prm", "target": "tot", "type": "ENHANCES", "confidence": 0.85}, {"source": "prm", "target": "verification", "type": "ENHANCES", "confidence": 0.9}, {"source": "cot", "target": "direct_answer", "type": "SUBSTITUTES", "confidence": 0.7}, {"source": "pal", "target": "cot", "type": "SUBSTITUTES", "confidence": 0.6}, {"source": "tot", "target": "cot", "type": "SUBSTITUTES", "confidence": 0.5}, {"source": "selfrefine", "target": "reflexion", "type": "SUBSTITUTES", "confidence": 0.7}, {"source": "debate", "target": "sc", "type": "SUBSTITUTES", "confidence": 0.5}, {"source": "pal", "target": "direct_answer", "type": "CONFLICTS", "confidence": 0.9}, {"source": "cot", "target": "direct_answer", "type": "CONFLICTS", "confidence": 0.95}, {"source": "cot", "target": "sc", "type": "COMPOSES", "confidence": 0.95}, {"source": "cot", "target": "verification", "type": "COMPOSES", "confidence": 0.9}, {"source": "cot", "target": "retrieval", "type": "COMPOSES", "confidence": 0.8}, {"source": "cot", "target": "tool_use", "type": "COMPOSES", "confidence": 0.8}, {"source": "verification", "target": "reflexion", "type": "COMPOSES", "confidence": 0.7}, {"source": "tot", "target": "verification", "type": "COMPOSES", "confidence": 0.8}, {"source": "cot", "target": "sc", "type": "PREREQUISITE", "confidence": 0.95}, {"source": "cot", "target": "verification", "type": "PREREQUISITE", "confidence": 0.8}];
+
+const levelColor = {
+  "prompting": "#4fc3f7", "inference-time": "#81c784",
+  "training-time": "#ff8a65", "architecture": "#ce93d8", "data": "#fff176"
+};
+const edgeColor = {
+  "ENHANCES": "#4caf50", "COMPOSES": "#2196f3", "PREREQUISITE": "#ff9800",
+  "CONFLICTS": "#f44336", "SUBSTITUTES": "#9c27b0", "REFINES": "#607d8b"
+};
+
+const width = window.innerWidth, height = window.innerHeight - 56;
+const svg = d3.select("#graph").append("svg").attr("width", width).attr("height", height);
+const g = svg.append("g");
+
+svg.call(d3.zoom().scaleExtent([0.1, 8]).on("zoom", (e) => g.attr("transform", e.transform)));
+
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+  .force("charge", d3.forceManyBody().strength(-300))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(20));
+
+// Edges
+const link = g.append("g").selectAll("line").data(links).join("line")
+  .attr("stroke", d => edgeColor[d.type] || "#555")
+  .attr("stroke-opacity", d => 0.3 + d.confidence * 0.5)
+  .attr("stroke-width", d => 1 + d.confidence);
+
+// Nodes
+const node = g.append("g").selectAll("circle").data(nodes).join("circle")
+  .attr("r", d => 6 + d.papers * 2)
+  .attr("fill", d => levelColor[d.level] || "#999")
+  .attr("stroke", "#222").attr("stroke-width", 1)
+  .call(d3.drag().on("start", dragstart).on("drag", dragged).on("end", dragend));
+
+// Labels
+const label = g.append("g").selectAll("text").data(nodes).join("text")
+  .text(d => d.name.length > 25 ? d.name.slice(0, 22) + "..." : d.name)
+  .attr("dx", 12).attr("dy", 4);
+
+// Tooltip
+const tooltip = d3.select("#tooltip");
+node.on("mouseover", (e, d) => {
+  tooltip.style("display", "block")
+    .html(`<div class="name">${d.name}</div><div class="goal">${d.goal}</div><div class="meta">${d.level} &middot; ${d.tags.join(", ")} &middot; ${d.papers} paper(s)</div>`)
+    .style("left", (e.pageX + 12) + "px").style("top", (e.pageY - 10) + "px");
+}).on("mouseout", () => tooltip.style("display", "none"));
+
+simulation.on("tick", () => {
+  link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+  node.attr("cx", d => d.x).attr("cy", d => d.y);
+  label.attr("x", d => d.x).attr("y", d => d.y);
+});
+
+function dragstart(e, d) { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+function dragged(e, d) { d.fx = e.x; d.fy = e.y; }
+function dragend(e, d) { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+</script>
+</body>
+</html>

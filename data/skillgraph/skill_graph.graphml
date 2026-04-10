@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphstruct.org/graphml">
+  <key id="name" for="node" attr.name="name" attr.type="string"/>
+  <key id="goal" for="node" attr.name="goal" attr.type="string"/>
+  <key id="level" for="node" attr.name="level" attr.type="string"/>
+  <key id="mechanism" for="node" attr.name="mechanism" attr.type="string"/>
+  <key id="edge_type" for="edge" attr.name="edge_type" attr.type="string"/>
+  <key id="confidence" for="edge" attr.name="confidence" attr.type="double"/>
+  <key id="evidence" for="edge" attr.name="evidence" attr.type="string"/>
+  <graph id="G" edgedefault="directed">
+    <node id="cot">
+      <data key="name">Chain-of-Thought Prompting</data>
+      <data key="goal">Improve LLM multi-step reasoning by eliciting intermediate steps</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Insert step-by-step reasoning demonstrations in the prompt before the query, guiding the model to produce intermediate derivation steps rather than jumping to the answer.</data>
+    </node>
+    <node id="zerocot">
+      <data key="name">Zero-shot CoT</data>
+      <data key="goal">Enable chain-of-thought reasoning without demonstrations</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Append &apos;Let&apos;s think step by step&apos; to the prompt to trigger reasoning without few-shot exemplars.</data>
+    </node>
+    <node id="sc">
+      <data key="name">Self-Consistency</data>
+      <data key="goal">Improve reasoning reliability via majority voting over multiple chains</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Sample multiple reasoning chains from the model with temperature &gt; 0, extract the final answer from each, and return the most frequent answer (majority vote).</data>
+    </node>
+    <node id="tot">
+      <data key="name">Tree of Thoughts</data>
+      <data key="goal">Enable deliberate planning via tree-structured reasoning exploration</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Decompose problem into thought steps, generate multiple candidates per step, evaluate each with a value function, and search the tree (BFS/DFS) to find the best reasoning path.</data>
+    </node>
+    <node id="got">
+      <data key="name">Graph of Thoughts</data>
+      <data key="goal">Enable non-linear reasoning via graph-structured thought exploration</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Extend Tree of Thoughts by allowing merging and refining of thoughts, creating a DAG/graph structure instead of a tree. Supports aggregation of partial solutions.</data>
+    </node>
+    <node id="verification">
+      <data key="name">Step-level Verification</data>
+      <data key="goal">Detect and correct errors in intermediate reasoning steps</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Train or prompt a verifier model to score each intermediate step of a reasoning chain for correctness. Use process reward model (PRM) to assign step-level rewards.</data>
+    </node>
+    <node id="reflexion">
+      <data key="name">Reflexion</data>
+      <data key="goal">Enable LLM self-improvement through verbal self-reflection</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">After task failure, generate a verbal reflection analyzing what went wrong, store it in memory, and use it to inform the next attempt. Iterates until success or budget exhausted.</data>
+    </node>
+    <node id="selfrefine">
+      <data key="name">Self-Refine</data>
+      <data key="goal">Iteratively improve LLM outputs via self-feedback</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Generate initial output, then prompt the same model to critique it, then refine based on the critique. Repeat for N rounds.</data>
+    </node>
+    <node id="pal">
+      <data key="name">Program-Aided Language Models</data>
+      <data key="goal">Offload computation to code execution for faithful reasoning</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Prompt LLM to generate Python code that solves the reasoning problem, then execute the code to obtain the answer. Separates reasoning (LLM) from computation (interpreter).</data>
+    </node>
+    <node id="pot">
+      <data key="name">Program of Thoughts</data>
+      <data key="goal">Disentangle computation from reasoning via code</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Prompt LLM to express reasoning as interleaved natural language thoughts and executable code statements. Execute code parts, feed results back as context.</data>
+    </node>
+    <node id="retrieval">
+      <data key="name">Evidence-Grounded Retrieval for Reasoning</data>
+      <data key="goal">Ground reasoning steps in retrieved external evidence</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">At each reasoning step, retrieve relevant evidence from a knowledge corpus. The model conditions its next reasoning step on both the chain so far and the retrieved evidence.</data>
+    </node>
+    <node id="tool_use">
+      <data key="name">Tool-Augmented Reasoning</data>
+      <data key="goal">Extend LLM capabilities by calling external tools during reasoning</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Teach or prompt the model to emit tool calls (calculator, search, code interpreter) at appropriate points in the reasoning chain, then inject tool outputs back into the context.</data>
+    </node>
+    <node id="direct_answer">
+      <data key="name">Direct Answer Prompting</data>
+      <data key="goal">Obtain answer directly without intermediate reasoning</data>
+      <data key="level">prompting</data>
+      <data key="mechanism">Standard prompting: ask the question and expect a direct answer without chain-of-thought or other scaffolding.</data>
+    </node>
+    <node id="debate">
+      <data key="name">Multi-Agent Debate</data>
+      <data key="goal">Improve reasoning quality through adversarial multi-agent discussion</data>
+      <data key="level">inference-time</data>
+      <data key="mechanism">Multiple LLM instances independently solve a problem, then iteratively debate their answers, challenging each other&apos;s reasoning. After N rounds, converge on a consensus answer.</data>
+    </node>
+    <node id="prm">
+      <data key="name">Process Reward Model</data>
+      <data key="goal">Provide dense step-level feedback for reasoning chain generation</data>
+      <data key="level">training-time</data>
+      <data key="mechanism">Train a reward model on step-level human annotations to score each intermediate step. Use as a value function for best-of-N selection or tree search guidance.</data>
+    </node>
+    <edge id="e0" source="zerocot" target="cot">
+      <data key="edge_type">REFINES</data>
+      <data key="confidence">0.9</data>
+      <data key="evidence">Zero-shot CoT is a simplified variant of few-shot CoT</data>
+    </edge>
+    <edge id="e1" source="got" target="tot">
+      <data key="edge_type">REFINES</data>
+      <data key="confidence">0.85</data>
+      <data key="evidence">GoT extends ToT with graph structure</data>
+    </edge>
+    <edge id="e2" source="pot" target="pal">
+      <data key="edge_type">REFINES</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">PoT refines PAL with interleaved reasoning</data>
+    </edge>
+    <edge id="e3" source="sc" target="cot">
+      <data key="edge_type">ENHANCES</data>
+      <data key="confidence">0.95</data>
+      <data key="evidence">Self-consistency improves CoT via majority voting</data>
+    </edge>
+    <edge id="e4" source="verification" target="cot">
+      <data key="edge_type">ENHANCES</data>
+      <data key="confidence">0.9</data>
+      <data key="evidence">Step verification catches CoT errors</data>
+    </edge>
+    <edge id="e5" source="retrieval" target="cot">
+      <data key="edge_type">ENHANCES</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">Evidence grounding reduces hallucination in CoT</data>
+    </edge>
+    <edge id="e6" source="prm" target="tot">
+      <data key="edge_type">ENHANCES</data>
+      <data key="confidence">0.85</data>
+      <data key="evidence">PRM provides value function for tree search</data>
+    </edge>
+    <edge id="e7" source="prm" target="verification">
+      <data key="edge_type">ENHANCES</data>
+      <data key="confidence">0.9</data>
+      <data key="evidence">PRM is a trained step-level verifier</data>
+    </edge>
+    <edge id="e8" source="cot" target="direct_answer">
+      <data key="edge_type">SUBSTITUTES</data>
+      <data key="confidence">0.7</data>
+      <data key="evidence">CoT replaces direct answering for complex tasks</data>
+    </edge>
+    <edge id="e9" source="pal" target="cot">
+      <data key="edge_type">SUBSTITUTES</data>
+      <data key="confidence">0.6</data>
+      <data key="evidence">PAL substitutes natural language chains with code</data>
+    </edge>
+    <edge id="e10" source="tot" target="cot">
+      <data key="edge_type">SUBSTITUTES</data>
+      <data key="confidence">0.5</data>
+      <data key="evidence">ToT is a more expensive alternative to CoT for hard problems</data>
+    </edge>
+    <edge id="e11" source="selfrefine" target="reflexion">
+      <data key="edge_type">SUBSTITUTES</data>
+      <data key="confidence">0.7</data>
+      <data key="evidence">Both do iterative self-improvement</data>
+    </edge>
+    <edge id="e12" source="debate" target="sc">
+      <data key="edge_type">SUBSTITUTES</data>
+      <data key="confidence">0.5</data>
+      <data key="evidence">Both use multiple solutions; debate via adversarial discussion</data>
+    </edge>
+    <edge id="e13" source="pal" target="direct_answer">
+      <data key="edge_type">CONFLICTS</data>
+      <data key="confidence">0.9</data>
+      <data key="evidence">PAL requires structured code generation</data>
+    </edge>
+    <edge id="e14" source="cot" target="direct_answer">
+      <data key="edge_type">CONFLICTS</data>
+      <data key="confidence">0.95</data>
+      <data key="evidence">CoT and direct answering are mutually exclusive strategies</data>
+    </edge>
+    <edge id="e15" source="cot" target="sc">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.95</data>
+      <data key="evidence">CoT + Self-Consistency is a standard pipeline</data>
+    </edge>
+    <edge id="e16" source="cot" target="verification">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.9</data>
+      <data key="evidence">Generate chain then verify steps</data>
+    </edge>
+    <edge id="e17" source="cot" target="retrieval">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">Retrieve evidence to ground each CoT step</data>
+    </edge>
+    <edge id="e18" source="cot" target="tool_use">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">Use tools within a CoT reasoning chain</data>
+    </edge>
+    <edge id="e19" source="verification" target="reflexion">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.7</data>
+      <data key="evidence">Verify then reflect on failures</data>
+    </edge>
+    <edge id="e20" source="tot" target="verification">
+      <data key="edge_type">COMPOSES</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">Use verifier as value function in tree search</data>
+    </edge>
+    <edge id="e21" source="cot" target="sc">
+      <data key="edge_type">PREREQUISITE</data>
+      <data key="confidence">0.95</data>
+      <data key="evidence">SC requires CoT to generate multiple chains</data>
+    </edge>
+    <edge id="e22" source="cot" target="verification">
+      <data key="edge_type">PREREQUISITE</data>
+      <data key="confidence">0.8</data>
+      <data key="evidence">Verification requires a reasoning chain to verify</data>
+    </edge>
+  </graph>
+</graphml>

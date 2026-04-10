@@ -125,13 +125,15 @@ For each error:
 After successful compilation, verify the output:
 
 ```bash
+# PDF name = directory name (the paper's short name), not "main"
+PAPER_NAME="$(basename "$(pwd)")"
+
 # Check PDF exists and has content
 ls -la main.pdf
+# Copy to paper-name PDF
+cp main.pdf "${PAPER_NAME}.pdf"
 # Check page count
-pdfinfo main.pdf | grep Pages
-
-# macOS: open for visual inspection
-# open main.pdf
+pdfinfo "${PAPER_NAME}.pdf" | grep Pages
 ```
 
 **Automated checks:**
@@ -219,7 +221,7 @@ For conference submission, additional checks:
 ## Compilation Report
 
 - **Status**: SUCCESS / FAILED
-- **PDF**: paper/main.pdf
+- **PDF**: paper/{PAPER_NAME}.pdf (named after directory, not "main")
 - **Pages**: X (main body to Conclusion) + Y (references) + Z (appendix)
 - **Within page limit**: YES/NO (MAX_PAGES = N)
 - **Errors fixed**: [list of auto-fixed issues]

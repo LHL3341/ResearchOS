@@ -161,11 +161,11 @@ Before drafting the front matter, re-read the one-sentence contribution from `PA
 - Methods should begin by page 2-3 at the latest
 
 **§2 Related Work:**
-- **MINIMUM 1 full page** (3-4 substantive paragraphs). Short related work sections are a common reviewer complaint.
-- Organize by category using `\paragraph{Category Name.}`
-- Organize methodologically, by assumption class, or by research question; do not write paper-by-paper mini-summaries
-- Each category: 1 paragraph summarizing the line of work + 1-2 sentences positioning this paper
-- Do NOT just list papers — synthesize and compare
+- **Strictly within 1 page** — 2-3 paragraphs, each covering one category
+- Organize by category using `\paragraph{Category Name.}` — limit to 2-3 categories
+- **Citation-dense, prose-lean**: pack references and research lineage; keep descriptions short
+- Each category: cite the key papers densely, summarize the line of work in 2-3 sentences, then 1 sentence positioning this paper
+- Do NOT write lengthy per-paper summaries — synthesize and compare concisely
 - End each paragraph with how this paper relates/differs
 
 **§3 Method / Preliminaries / Setup:**
@@ -337,7 +337,7 @@ Before declaring done:
 - [ ] No `[VERIFY]` markers left unchecked
 - [ ] Abstract is self-contained (understandable without reading the paper)
 - [ ] Title is specific and informative (not generic)
-- [ ] Related work is ≥1 full page
+- [ ] Related work is within 1 page, with 2-3 categories, citation-dense and concise
 - [ ] references.bib contains ONLY cited entries (no bloat)
 - [ ] **No stale section files** — every .tex in `sections/` is `\input`ed by `main.tex`
 - [ ] **Section files match main.tex** — file numbering and `\input` paths are consistent

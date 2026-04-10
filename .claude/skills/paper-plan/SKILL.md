@@ -113,11 +113,12 @@ For each section, specify:
 - **Front-loading check**: [would a skim reader know the main claim before reaching the method?]
 
 ### §2 Related Work
-- **Subtopics**: [2-4 categories of related work]
+- **Subtopics**: [2-3 categories of related work — no more than 3]
 - **Positioning**: [how this paper differs from each category]
-- **Minimum length**: 1 full page (at least 3-4 paragraphs with substantive synthesis)
+- **Length**: strictly within 1 page (2-3 concise paragraphs)
+- **Focus**: prioritize citations and research lineage over verbose descriptions — keep prose lean
 - **Organization rule**: organize by methodological family / assumption / question, not paper-by-paper
-- **Must NOT be just a list** — synthesize, compare, and position
+- **Style**: cite densely, synthesize briefly, position clearly. Avoid lengthy per-paper summaries.
 
 ### §3 Method / Setup / Preliminaries
 - **Notation**: [key symbols and their meanings]

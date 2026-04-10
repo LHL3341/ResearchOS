@@ -125,8 +125,8 @@ For each error:
 After successful compilation, verify the output:
 
 ```bash
-# PDF name = directory name (the paper's short name), not "main"
-PAPER_NAME="$(basename "$(pwd)")"
+# PDF name = parent directory name (project-name/paper structure)
+PAPER_NAME="$(basename "$(cd .. && pwd)")"
 
 # Check PDF exists and has content
 ls -la main.pdf

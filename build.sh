@@ -1,8 +1,8 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-# 用当前目录名作为 PDF 文件名（即论文小名）
-PAPER_NAME="$(basename "$(pwd)")"
+# 用上级目录名作为 PDF 文件名（项目名/paper 结构，取项目名）
+PAPER_NAME="$(basename "$(cd .. && pwd)")"
 
 pdflatex -interaction=nonstopmode main.tex > /dev/null 2>&1
 bibtex main > /dev/null 2>&1
